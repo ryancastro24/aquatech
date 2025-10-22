@@ -1,0 +1,322 @@
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import supabase from "@/backend/config"; // ✅ ensure your Supabase client is configured
+import { useNavigate } from "react-router-dom";
+const DashboardMain = () => {
+  const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [topStores, setTopStores] = useState<any[]>([]);
+  const [topItems, setTopItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  console.log("Top Stores:", topStores);
+  console.log("Top Items:", topItems);
+
+  // 🖼️ Hero slider content
+  const slides = [
+    {
+      id: 1,
+      title: "Welcome to AgriHub Marketplace 🌾",
+      subtitle:
+        "Discover tools, equipment, and farm essentials at the best prices.",
+      image:
+        "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1200",
+      buttonText: "Explore Now",
+    },
+    {
+      id: 2,
+      title: "Big Sale on Farming Tools 🔧",
+      subtitle: "Up to 40% off on selected FarmTech tools this week only!",
+      image:
+        "https://images.unsplash.com/photo-1602524819190-7c43a63c9a12?w=1200",
+      buttonText: "Shop Tools",
+    },
+    {
+      id: 3,
+      title: "Exclusive Offer: Fertilizers 💚",
+      subtitle:
+        "Get premium organic fertilizers with free shipping nationwide!",
+      image:
+        "https://images.unsplash.com/photo-1590080875838-66c8893a0db0?w=1200",
+      buttonText: "Buy Fertilizers",
+    },
+  ];
+
+  // 🕒 Auto slide
+  useEffect(() => {
+    if (paused) return;
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slides.length, paused]);
+
+  const prevSlide = () =>
+    setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+
+  // 📱 Swipe gesture
+  const handleTouchStart = (e: React.TouchEvent) =>
+    (touchStartX.current = e.targetTouches[0].clientX);
+  const handleTouchMove = (e: React.TouchEvent) =>
+    (touchEndX.current = e.targetTouches[0].clientX);
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 50) diff > 0 ? nextSlide() : prevSlide();
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  // 🧠 Fetch top stores and top items
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+
+      // 🏪 Fetch all sales with their store info
+      const { data: storeData, error: storeError } = await supabase
+        .from("sales")
+        .select(
+          `
+    id,
+    store_id,
+    store_branches (
+      id,
+      name
+    )
+  `
+        );
+
+      if (storeError) {
+        console.error("Error fetching stores:", storeError);
+      } else {
+        // 🧮 Count how many sales per store_id
+        const storeCountMap = new Map();
+
+        storeData?.forEach((sale: any) => {
+          const id = sale.store_branches?.id || sale.store_id;
+          const name = sale.store_branches?.name || "Unknown Store";
+
+          if (!storeCountMap.has(id)) {
+            storeCountMap.set(id, { id, name, count: 1 });
+          } else {
+            storeCountMap.get(id).count += 1;
+          }
+        });
+
+        // 🔝 Sort by highest count and get top 3
+        const topStoresList = Array.from(storeCountMap.values())
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3);
+
+        console.log("debug store list", topStoresList);
+        setTopStores(topStoresList);
+      }
+
+      // 🛒 Fetch top 3 items from order_items → orders → sales
+      const { data: orderData, error: orderError } = await supabase
+        .from("order_items")
+        .select(
+          `
+    id,
+    quantity,
+    inventory (
+      id,
+      item_name,
+      price
+    ),
+      orders(branch_id)
+  `
+        )
+        .order("quantity", { ascending: false })
+        .limit(3);
+
+      setTopItems(orderData || []);
+
+      console.log("Order Data:", orderData);
+      if (storeError || orderError) {
+        console.error("Error fetching data:", storeError || orderError);
+      }
+
+      setLoading(false);
+    };
+
+    fetchData();
+  }, []);
+
+  const filteredProducts = topItems.filter((item) =>
+    item.inventory?.item_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  console.log("Filtered Products:", filteredProducts);
+
+  return (
+    <div className="min-h-screen bg-gray-50 px-4 md:px-8 py-8 space-y-10">
+      {/* 🧭 Hero Slider */}
+      <div
+        className="relative group w-full h-56 sm:h-64 md:h-80 rounded-2xl overflow-hidden shadow-lg"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div
+          className="flex transition-transform duration-700 ease-in-out"
+          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+        >
+          {slides.map((slide) => (
+            <div key={slide.id} className="min-w-full relative flex-shrink-0">
+              <img
+                src={slide.image}
+                alt={slide.title}
+                className="w-full h-full object-cover"
+                draggable="false"
+              />
+              <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white text-center p-4 sm:p-6">
+                <h1 className="text-xl sm:text-2xl md:text-4xl font-bold mb-2 leading-tight">
+                  {slide.title}
+                </h1>
+                <p className="text-xs sm:text-sm md:text-lg text-gray-200 max-w-sm sm:max-w-xl">
+                  {slide.subtitle}
+                </p>
+                <Button className="mt-3 sm:mt-4 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm md:text-base px-4 py-2">
+                  {slide.buttonText}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Arrows */}
+        <button
+          onClick={prevSlide}
+          className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 p-2 rounded-full text-white opacity-0 group-hover:opacity-100 transition duration-300 hidden sm:flex"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <button
+          onClick={nextSlide}
+          className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 p-2 rounded-full text-white opacity-0 group-hover:opacity-100 transition duration-300 hidden sm:flex"
+        >
+          <ChevronRight size={24} />
+        </button>
+
+        {/* Dots */}
+        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentSlide(index)}
+              className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
+                currentSlide === index
+                  ? "bg-green-500 scale-110"
+                  : "bg-gray-300 hover:bg-gray-400"
+              }`}
+            ></button>
+          ))}
+        </div>
+      </div>
+
+      {/* 🏪 Featured Stores */}
+      <section>
+        <h2 className="text-lg sm:text-2xl font-semibold mb-4 text-gray-800 text-center md:text-left">
+          Featured Stores
+        </h2>
+        {loading ? (
+          <p className="text-center text-gray-500">Loading stores...</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
+            {topStores.map((store) => (
+              <Card
+                key={store.id}
+                className="hover:shadow-xl transition-all duration-300 cursor-pointer"
+                onClick={() => navigate(`/dashboard/store/${store.id}`)}
+              >
+                <CardHeader className="flex flex-col items-center text-center">
+                  {/* <img
+                    src={store.logo}
+                    alt={store.name}
+                    className="w-14 h-14 sm:w-20 sm:h-20 rounded-full mb-3"
+                  /> */}
+                  <CardTitle className="text-sm sm:text-lg font-semibold">
+                    {store.name}
+                  </CardTitle>
+                  {/* <p className="text-gray-500 text-xs sm:text-sm">
+                    {store.tagline}
+                  </p> */}
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 🔍 Popular Items */}
+      <section>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-3">
+          <h2 className="text-lg sm:text-2xl font-semibold text-gray-800 text-center sm:text-left">
+            Popular Items
+          </h2>
+          <div className="flex justify-center sm:justify-end">
+            <Input
+              placeholder="Search items..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full sm:w-64"
+            />
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="text-center text-gray-500">Loading items...</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-6">
+            {filteredProducts.map((product) => (
+              <Card
+                key={product.id}
+                className="group overflow-hidden hover:shadow-xl transition-all duration-300"
+              >
+                <div className="relative h-32 sm:h-40 md:h-48 overflow-hidden">
+                  {/* <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  /> */}
+                </div>
+                <CardContent className="p-2 sm:p-4 space-y-2">
+                  <h3 className="text-xs sm:text-base font-semibold text-gray-800 line-clamp-1">
+                    {product.inventory?.item_name}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500">
+                    {product.store}
+                  </p>
+                  <p className="text-green-700 font-bold text-xs sm:text-base">
+                    ₱{product.inventory?.price.toLocaleString()}
+                  </p>
+                  <Button
+                    onClick={() =>
+                      navigate(`/dashboard/store/${product.orders.branch_id}`)
+                    }
+                    className="w-full mt-2 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm"
+                  >
+                    Add to Cart
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+};
+
+export default DashboardMain;
