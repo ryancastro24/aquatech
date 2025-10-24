@@ -21,13 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
 import supabase from "@/backend/config";
 
 interface InventoryItem {
@@ -72,18 +65,18 @@ const StoreBranch = () => {
   const { branchId } = useParams<{ branchId: string }>();
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [, setInventory] = useState<InventoryItem[]>([]);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  // const [, setAddDialogOpen] = useState(false);
   const [loadingOrders, setLoadingOrders] = useState(false);
-  const [newItem, setNewItem] = useState({
-    item_name: "",
-    price: "",
-    stock: "",
-    description: "",
-  });
+  // const [newItem, setNewItem] = useState({
+  //   item_name: "",
+  //   price: "",
+  //   stock: "",
+  //   description: "",
+  // });
 
   // Delivery management states
   const [agents, setAgents] = useState<DeliveryAgent[]>([]);
@@ -169,41 +162,41 @@ const StoreBranch = () => {
   }, [deliveryDialogOpen]);
 
   // ✅ Add new inventory item
-  const addItem = async () => {
-    if (
-      !newItem.item_name ||
-      !newItem.price ||
-      !newItem.stock ||
-      !newItem.description
-    ) {
-      alert("All fields are required!");
-      return;
-    }
+  // const addItem = async () => {
+  //   if (
+  //     !newItem.item_name ||
+  //     !newItem.price ||
+  //     !newItem.stock ||
+  //     !newItem.description
+  //   ) {
+  //     alert("All fields are required!");
+  //     return;
+  //   }
 
-    const { data, error } = await supabase
-      .from("inventory")
-      .insert([
-        {
-          store_id: branchId,
-          item_name: newItem.item_name,
-          price: Number(newItem.price),
-          stock: Number(newItem.stock),
-          description: newItem.description,
-        },
-      ])
-      .select()
-      .single();
+  //   const { data, error } = await supabase
+  //     .from("inventory")
+  //     .insert([
+  //       {
+  //         store_id: branchId,
+  //         item_name: newItem.item_name,
+  //         price: Number(newItem.price),
+  //         stock: Number(newItem.stock),
+  //         description: newItem.description,
+  //       },
+  //     ])
+  //     .select()
+  //     .single();
 
-    if (error) {
-      console.error("Add item error:", error);
-      alert("Failed to add item!");
-      return;
-    }
+  //   if (error) {
+  //     console.error("Add item error:", error);
+  //     alert("Failed to add item!");
+  //     return;
+  //   }
 
-    setInventory((prev) => [...prev, data as InventoryItem]);
-    setNewItem({ item_name: "", price: "", stock: "", description: "" });
-    setAddDialogOpen(false);
-  };
+  //   setInventory((prev) => [...prev, data as InventoryItem]);
+  //   setNewItem({ item_name: "", price: "", stock: "", description: "" });
+  //   setAddDialogOpen(false);
+  // };
 
   // ✅ Save edited item
   const saveItem = async (updatedItem: InventoryItem) => {
@@ -229,16 +222,16 @@ const StoreBranch = () => {
     setEditingItem(null);
   };
 
-  // ✅ Delete item
-  const deleteItem = async (id: string) => {
-    const { error } = await supabase.from("inventory").delete().eq("id", id);
-    if (error) {
-      console.error("Delete error:", error);
-      alert("Failed to delete item!");
-      return;
-    }
-    setInventory((prev) => prev.filter((i) => i.id !== id));
-  };
+  // // ✅ Delete item
+  // const deleteItem = async (id: string) => {
+  //   const { error } = await supabase.from("inventory").delete().eq("id", id);
+  //   if (error) {
+  //     console.error("Delete error:", error);
+  //     alert("Failed to delete item!");
+  //     return;
+  //   }
+  //   setInventory((prev) => prev.filter((i) => i.id !== id));
+  // };
 
   // ✅ Add delivery agent
   const handleAddAgent = async () => {
