@@ -74,7 +74,7 @@ const Sales = () => {
           )
         `);
         if (error) throw error;
-        setSalesData(data || []);
+        setSalesData(data as any);
       } catch (err) {
         console.error("❌ Error fetching sales data:", err);
       } finally {
