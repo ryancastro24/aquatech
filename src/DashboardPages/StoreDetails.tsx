@@ -156,8 +156,35 @@ const StoreDetails: React.FC = () => {
       return;
     }
 
+    // ✅ Ensure we have user's location before submitting
+    let lat = deliveryLat;
+    let lng = deliveryLng;
+
+    if (lat === null || lng === null) {
+      try {
+        const position = await new Promise<GeolocationPosition>(
+          (resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0,
+            })
+        );
+        lat = position.coords.latitude;
+        lng = position.coords.longitude;
+        setDeliveryLat(lat);
+        setDeliveryLng(lng);
+      } catch (error) {
+        console.error("❌ Error fetching geolocation:", error);
+        alert(
+          "Unable to get your current location. Please enable location services."
+        );
+        return;
+      }
+    }
+
     try {
-      // Create order record
+      // ✅ Create order record
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert([
@@ -166,8 +193,8 @@ const StoreDetails: React.FC = () => {
             branch_id: storeId,
             total_amount: totalAmount,
             delivery_address: deliveryAddress,
-            delivery_lat: deliveryLat,
-            delivery_lng: deliveryLng,
+            delivery_lat: lat,
+            delivery_lng: lng,
           },
         ])
         .select()
@@ -177,7 +204,7 @@ const StoreDetails: React.FC = () => {
 
       const orderId = orderData.id;
 
-      // Insert order items
+      // ✅ Insert order items
       const orderItemsPayload = selectedItems.map((item) => ({
         order_id: orderId,
         item_id: item.id,
@@ -196,7 +223,7 @@ const StoreDetails: React.FC = () => {
       setSelectedItems([]);
       setDeliveryAddress("");
     } catch (err) {
-      console.error("Error submitting order:", err);
+      console.error("❌ Error submitting order:", err);
       alert("Something went wrong while submitting your order.");
     }
   };

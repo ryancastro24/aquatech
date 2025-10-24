@@ -74,7 +74,9 @@ const DeliveryTeamPage = () => {
   const [branchId, setBranchId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("pending");
+
   console.log("selected storedId", branchId);
+
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
@@ -90,6 +92,8 @@ const DeliveryTeamPage = () => {
     const fetchBranch = async () => {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
+
+      console.log("userId", userId);
       if (!userId) return;
       const { data } = await supabase
         .from("delivery_team")

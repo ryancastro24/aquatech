@@ -282,29 +282,55 @@ const StoreBranch = () => {
       return;
     }
 
+    // Step 1️⃣ - Sign up user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name, role: "delivery" } },
     });
-    if (authError) return alert(authError.message);
 
-    const { data: insertedUser, error: insertError } = await supabase
-      .from("users")
-      .insert({
-        auth_id: authData.user?.id,
-        full_name,
-        email,
-        role: "delivery",
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error(insertError);
-      return alert("Failed to save user in public.users");
+    if (authError) {
+      console.error(authError);
+      alert(authError.message);
+      return;
     }
 
+    const authId = authData.user?.id;
+
+    // Step 2️⃣ - Check if user already exists in public.users
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id, auth_id")
+      .eq("email", email)
+      .single();
+
+    let insertedUser;
+
+    // Step 3️⃣ - Insert if not existing
+    if (!existingUser) {
+      const { data, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          auth_id: authId,
+          full_name,
+          email,
+          role: "delivery",
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error(insertError);
+        alert("Failed to save user in public.users");
+        return;
+      }
+
+      insertedUser = data;
+    } else {
+      insertedUser = existingUser;
+    }
+
+    // Step 4️⃣ - Add to delivery_team table
     const { error: teamError } = await supabase.from("delivery_team").insert({
       store_id: branchId,
       user_id: insertedUser.auth_id,

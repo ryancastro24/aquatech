@@ -138,6 +138,8 @@ const Stores = () => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         console.log("📍 User location:", lat, lng);
+
+        console.log(lat, lng);
         setDeliveryLat(lat);
         setDeliveryLng(lng);
         calculateDistances(lat, lng);
