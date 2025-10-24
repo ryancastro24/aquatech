@@ -117,13 +117,33 @@ const DeliveryTeamPage = () => {
   }, [branchId]);
 
   useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) =>
+    if (!navigator.geolocation) {
+      console.warn("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
         setUserLocation({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-        }),
-      (err) => console.warn("Location error:", err)
+        });
+      },
+      (err) => {
+        if (err.code === 1) {
+          console.warn("User denied Geolocation permission.");
+          alert("Please allow location access for better results.");
+        } else if (err.code === 2) {
+          console.warn("Position unavailable.");
+        } else if (err.code === 3) {
+          console.warn("Geolocation request timed out.");
+        } else {
+          console.warn("Unknown Geolocation error:", err);
+        }
+
+        // optional fallback (e.g., default location)
+        setUserLocation({ lat: 8.9475, lng: 125.5406 }); // Butuan City default
+      }
     );
   }, []);
 
