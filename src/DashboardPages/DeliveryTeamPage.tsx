@@ -95,7 +95,7 @@ const DeliveryTeamPage = () => {
         .from("delivery_team")
         .select("store_id")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
       if (data) setBranchId(data.store_id);
     };
     fetchBranch();
