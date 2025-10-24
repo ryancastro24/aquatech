@@ -37,6 +37,7 @@ interface InventoryItem {
   price: number;
   stock: number;
   description: string;
+  image?: string; // ✅ Added image field
 }
 
 interface OrderItem {
@@ -84,6 +85,8 @@ const StoreBranch = () => {
     stock: "",
     description: "",
   });
+  const [newItemImage, setNewItemImage] = useState<File | null>(null);
+  const [editItemImage, setEditItemImage] = useState<File | null>(null);
 
   // Delivery management states
   const [agents, setAgents] = useState<DeliveryAgent[]>([]);
@@ -95,6 +98,28 @@ const StoreBranch = () => {
     password: "",
     role: "driver",
   });
+
+  // ✅ Upload helper
+  const uploadImage = async (file: File) => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `item_images/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from("item_bucket")
+      .upload(filePath, file);
+
+    if (error) {
+      console.error("Image upload failed:", error);
+      alert("Image upload failed!");
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from("item_bucket")
+      .getPublicUrl(filePath);
+    return data.publicUrl;
+  };
 
   // ✅ Fetch orders
   const fetchOrders = async () => {
@@ -155,7 +180,6 @@ const StoreBranch = () => {
     else setAgents(data as DeliveryAgent[]);
   };
 
-  // Fetch data on load
   useEffect(() => {
     fetchOrders();
   }, [branchId]);
@@ -168,17 +192,15 @@ const StoreBranch = () => {
     if (deliveryDialogOpen) fetchAgents();
   }, [deliveryDialogOpen]);
 
-  // ✅ Add new inventory item
+  // ✅ Add new item
   const addItem = async () => {
-    if (
-      !newItem.item_name ||
-      !newItem.price ||
-      !newItem.stock ||
-      !newItem.description
-    ) {
+    if (!newItem.item_name || !newItem.price || !newItem.stock) {
       alert("All fields are required!");
       return;
     }
+
+    let imageUrl = null;
+    if (newItemImage) imageUrl = await uploadImage(newItemImage);
 
     const { data, error } = await supabase
       .from("inventory")
@@ -189,6 +211,7 @@ const StoreBranch = () => {
           price: Number(newItem.price),
           stock: Number(newItem.stock),
           description: newItem.description,
+          image: imageUrl,
         },
       ])
       .select()
@@ -202,11 +225,18 @@ const StoreBranch = () => {
 
     setInventory((prev) => [...prev, data as InventoryItem]);
     setNewItem({ item_name: "", price: "", stock: "", description: "" });
+    setNewItemImage(null);
     setAddDialogOpen(false);
   };
 
-  // ✅ Save edited item
+  // ✅ Save edit
   const saveItem = async (updatedItem: InventoryItem) => {
+    let imageUrl = updatedItem.image;
+    if (editItemImage) {
+      const uploadedUrl = await uploadImage(editItemImage);
+      if (uploadedUrl) imageUrl = uploadedUrl;
+    }
+
     const { error } = await supabase
       .from("inventory")
       .update({
@@ -214,6 +244,7 @@ const StoreBranch = () => {
         price: updatedItem.price,
         stock: updatedItem.stock,
         description: updatedItem.description,
+        image: imageUrl,
       })
       .eq("id", updatedItem.id);
 
@@ -224,12 +255,15 @@ const StoreBranch = () => {
     }
 
     setInventory((prev) =>
-      prev.map((i) => (i.id === updatedItem.id ? updatedItem : i))
+      prev.map((i) =>
+        i.id === updatedItem.id ? { ...updatedItem, image: imageUrl } : i
+      )
     );
     setEditingItem(null);
+    setEditItemImage(null);
   };
 
-  // ✅ Delete item
+  // ✅ Delete
   const deleteItem = async (id: string) => {
     const { error } = await supabase.from("inventory").delete().eq("id", id);
     if (error) {
@@ -240,7 +274,7 @@ const StoreBranch = () => {
     setInventory((prev) => prev.filter((i) => i.id !== id));
   };
 
-  // ✅ Add delivery agent
+  // ✅ Add agent
   const handleAddAgent = async () => {
     const { full_name, email, password, role } = agentForm;
     if (!full_name || !email || !password) {
@@ -248,20 +282,13 @@ const StoreBranch = () => {
       return;
     }
 
-    // Create user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { full_name, role: "delivery" },
-      },
+      options: { data: { full_name, role: "delivery" } },
     });
-    if (authError) {
-      alert(authError.message);
-      return;
-    }
+    if (authError) return alert(authError.message);
 
-    // Insert into public.users
     const { data: insertedUser, error: insertError } = await supabase
       .from("users")
       .insert({
@@ -274,20 +301,18 @@ const StoreBranch = () => {
       .single();
 
     if (insertError) {
-      alert("Failed to save user in public.users");
       console.error(insertError);
-      return;
+      return alert("Failed to save user in public.users");
     }
 
-    // Also insert into delivery_team
     const { error: teamError } = await supabase.from("delivery_team").insert({
-      store_id: branchId, // or store_id if available from context
+      store_id: branchId,
       user_id: insertedUser.auth_id,
       role,
     });
 
     if (teamError) {
-      console.error("Delivery team insert error:", teamError);
+      console.error(teamError);
       alert("Failed to create delivery team entry.");
     } else {
       alert("Delivery agent added successfully!");
@@ -305,7 +330,6 @@ const StoreBranch = () => {
 
         <div className="flex gap-2">
           {/* Inventory Button */}
-          {/* ✅ INVENTORY DIALOG */}
           <Dialog
             open={inventoryDialogOpen}
             onOpenChange={setInventoryDialogOpen}
@@ -326,7 +350,6 @@ const StoreBranch = () => {
                 </Button>
               </div>
 
-              {/* Inventory Table */}
               <div className="overflow-x-auto rounded border">
                 {inventory.length === 0 ? (
                   <div className="p-4 text-gray-600 text-center">
@@ -336,6 +359,7 @@ const StoreBranch = () => {
                   <Table className="w-full">
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Image</TableHead>
                         <TableHead>Item Name</TableHead>
                         <TableHead>Price</TableHead>
                         <TableHead>Stock</TableHead>
@@ -346,6 +370,17 @@ const StoreBranch = () => {
                     <TableBody>
                       {inventory.map((item) => (
                         <TableRow key={item.id}>
+                          <TableCell>
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.item_name}
+                                className="h-12 w-12 object-cover rounded"
+                              />
+                            ) : (
+                              "No image"
+                            )}
+                          </TableCell>
                           <TableCell>{item.item_name}</TableCell>
                           <TableCell>₱{item.price.toFixed(2)}</TableCell>
                           <TableCell>{item.stock}</TableCell>
@@ -383,7 +418,7 @@ const StoreBranch = () => {
             </DialogContent>
           </Dialog>
 
-          {/* ✅ ADD ITEM DIALOG */}
+          {/* ✅ Add Item Dialog */}
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
@@ -398,10 +433,8 @@ const StoreBranch = () => {
                     onChange={(e) =>
                       setNewItem({ ...newItem, item_name: e.target.value })
                     }
-                    placeholder="Enter item name"
                   />
                 </div>
-
                 <div>
                   <Label>Price</Label>
                   <Input
@@ -410,10 +443,8 @@ const StoreBranch = () => {
                     onChange={(e) =>
                       setNewItem({ ...newItem, price: e.target.value })
                     }
-                    placeholder="Enter price"
                   />
                 </div>
-
                 <div>
                   <Label>Stock</Label>
                   <Input
@@ -422,10 +453,8 @@ const StoreBranch = () => {
                     onChange={(e) =>
                       setNewItem({ ...newItem, stock: e.target.value })
                     }
-                    placeholder="Enter stock"
                   />
                 </div>
-
                 <div>
                   <Label>Description</Label>
                   <Textarea
@@ -433,7 +462,16 @@ const StoreBranch = () => {
                     onChange={(e) =>
                       setNewItem({ ...newItem, description: e.target.value })
                     }
-                    placeholder="Enter item description"
+                  />
+                </div>
+                <div>
+                  <Label>Upload Image</Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setNewItemImage(e.target.files?.[0] || null)
+                    }
                   />
                 </div>
               </div>
@@ -641,7 +679,6 @@ const StoreBranch = () => {
         )}
       </div>
 
-      {/* Edit Item Dialog */}
       <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
         <DialogContent className="max-w-md">
           {editingItem && (
@@ -688,6 +725,23 @@ const StoreBranch = () => {
                     })
                   }
                 />
+                <div>
+                  <Label>Replace Image</Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setEditItemImage(e.target.files?.[0] || null)
+                    }
+                  />
+                  {editingItem.image && (
+                    <img
+                      src={editingItem.image}
+                      alt="Preview"
+                      className="h-16 w-16 object-cover mt-2 rounded"
+                    />
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={() => saveItem(editingItem)}>

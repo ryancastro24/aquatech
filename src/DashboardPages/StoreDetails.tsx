@@ -1,9 +1,16 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { useLoaderData } from "react-router-dom";
+import { useLoaderData, useNavigate } from "react-router-dom";
 import type { LoaderFunctionArgs } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { IoReturnUpBack } from "react-icons/io5";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +38,7 @@ interface InventoryItem {
   description?: string | null;
   price: number;
   stock: number;
+  image: string;
 }
 
 interface SelectedItem extends InventoryItem {
@@ -47,7 +55,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 const StoreDetails: React.FC = () => {
   const { storeId } = useLoaderData() as LoaderData;
-
+  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -195,7 +203,13 @@ const StoreDetails: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 font-[Poppins]">
-      <h2 className="text-2xl font-semibold">Store Inventory</h2>
+      <Button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 cursor-pointer"
+      >
+        <IoReturnUpBack /> return
+      </Button>
+      <h2 className="text-2xl font-semibold ">Store Inventory</h2>
 
       {loading ? (
         <p>Loading items...</p>
@@ -215,29 +229,47 @@ const StoreDetails: React.FC = () => {
                 }`}
                 onClick={() => toggleSelectItem(item)}
               >
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold">
-                    {item.item_name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-2">
-                    {item.description || "No description provided."}
-                  </p>
-                  <p className="text-sm">
-                    💰 <span className="font-semibold">₱{item.price}</span>
-                  </p>
-                  <p className="text-sm">
-                    🏷️ Stock:{" "}
-                    <span
-                      className={
-                        item.stock > 0 ? "text-green-600" : "text-red-500"
-                      }
-                    >
-                      {item.stock}
-                    </span>
-                  </p>
-                </CardContent>
+                <div className="flex items-start gap-4 p-4 w-full">
+                  {/* 🖼️ Image on the left */}
+                  <div className="flex-shrink-0">
+                    <img
+                      src={item.image}
+                      alt={item.item_name}
+                      className="w-32 h-32 object-cover rounded-md border"
+                    />
+                  </div>
+
+                  {/* 📄 Content on the right */}
+                  <div className="flex flex-col justify-between flex-grow">
+                    <CardHeader className="p-0">
+                      <CardTitle className="text-lg font-bold">
+                        {item.item_name}
+                      </CardTitle>
+
+                      <CardDescription>
+                        <p className="text-gray-600 mb-2">
+                          {item.description || "No description provided."}
+                        </p>
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="p-0 mt-2">
+                      <p className="text-sm">
+                        💰 <span className="font-semibold">₱{item.price}</span>
+                      </p>
+                      <p className="text-sm">
+                        🏷️ Stock:{" "}
+                        <span
+                          className={
+                            item.stock > 0 ? "text-green-600" : "text-red-500"
+                          }
+                        >
+                          {item.stock}
+                        </span>
+                      </p>
+                    </CardContent>
+                  </div>
+                </div>
               </Card>
             );
           })}

@@ -62,6 +62,7 @@ interface Branch {
   latitude?: string;
   longitude?: string;
   created_at?: string;
+  store_image?: string; // ✅ added
 }
 
 interface BranchData {
@@ -70,6 +71,7 @@ interface BranchData {
   contact_number: string;
   latitude: string;
   longitude: string;
+  storeImageFile?: File | null; // ✅ added
 }
 
 const DEFAULT_LAT = 8.9475; // Butuan default
@@ -107,9 +109,13 @@ const MyStorePage: React.FC = () => {
     contact_number: "",
     latitude: "",
     longitude: "",
+    storeImageFile: null, // ✅ added
   });
 
   const [preview, setPreview] = useState<string | null>(null);
+  const [branchImagePreview, setBranchImagePreview] = useState<string | null>(
+    null
+  ); // ✅ added
   const [userId, setUserId] = useState<string | null>(null);
 
   // --- Get logged-in user ---
@@ -169,6 +175,30 @@ const MyStorePage: React.FC = () => {
       return (publicUrlData as any)?.publicUrl ?? null;
     } catch (err) {
       console.error(err);
+      return null;
+    }
+  };
+
+  // ✅ --- Upload branch image ---
+  const uploadBranchImage = async (file: File): Promise<string | null> => {
+    try {
+      const filePath = `stores/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("stores_bucket")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error("Branch image upload error:", uploadError);
+        return null;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("stores_bucket")
+        .getPublicUrl(filePath);
+
+      return (publicUrlData as any)?.publicUrl ?? null;
+    } catch (err) {
+      console.error("Branch image upload failed:", err);
       return null;
     }
   };
@@ -261,7 +291,14 @@ const MyStorePage: React.FC = () => {
 
   // --- Add branch ---
   const handleAddBranch = async () => {
-    const { name, address, contact_number, latitude, longitude } = branchData;
+    const {
+      name,
+      address,
+      contact_number,
+      latitude,
+      longitude,
+      storeImageFile,
+    } = branchData;
     if (!selectedStore) {
       alert("No store selected.");
       return;
@@ -271,6 +308,15 @@ const MyStorePage: React.FC = () => {
       return;
     }
 
+    let store_image_url: string | null = null;
+    if (storeImageFile) {
+      store_image_url = await uploadBranchImage(storeImageFile);
+      if (!store_image_url) {
+        alert("Failed to upload store image.");
+        return;
+      }
+    }
+
     const { error } = await supabase.from("store_branches").insert({
       store_id: selectedStore.id,
       name,
@@ -278,6 +324,7 @@ const MyStorePage: React.FC = () => {
       contact_number,
       latitude,
       longitude,
+      store_image: store_image_url, // ✅ added
     });
 
     if (error) {
@@ -294,7 +341,9 @@ const MyStorePage: React.FC = () => {
       contact_number: "",
       latitude: "",
       longitude: "",
+      storeImageFile: null,
     });
+    setBranchImagePreview(null);
     fetchBranches(selectedStore.id);
   };
 
@@ -484,7 +533,7 @@ const MyStorePage: React.FC = () => {
 
       {/* Branches dialog */}
       <Dialog open={showBranchesDialog} onOpenChange={setShowBranchesDialog}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Branches for {selectedStore?.name || "Store"}
@@ -505,6 +554,13 @@ const MyStorePage: React.FC = () => {
                     <CardTitle>{b.name}</CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {b.store_image && (
+                      <img
+                        src={b.store_image}
+                        alt="Branch"
+                        className="w-full h-40 object-cover rounded-md mb-2"
+                      />
+                    )}
                     <p>{b.address}</p>
                     <p>📞 {b.contact_number}</p>
                     <p>
@@ -571,6 +627,29 @@ const MyStorePage: React.FC = () => {
                       })
                     }
                   />
+                </div>
+
+                {/* ✅ NEW: Branch Image Upload */}
+                <div className="flex flex-col gap-2">
+                  <Label>Branch Image</Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setBranchData({ ...branchData, storeImageFile: file });
+                      setBranchImagePreview(
+                        file ? URL.createObjectURL(file) : null
+                      );
+                    }}
+                  />
+                  {branchImagePreview && (
+                    <img
+                      src={branchImagePreview}
+                      alt="Branch Preview"
+                      className="w-32 h-32 object-cover rounded-md border"
+                    />
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2">

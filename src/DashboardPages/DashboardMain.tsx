@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import supabase from "@/backend/config"; // ✅ ensure your Supabase client is configured
+import supabase from "@/backend/config";
 import { useNavigate } from "react-router-dom";
+
 const DashboardMain = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -12,6 +13,7 @@ const DashboardMain = () => {
   const [paused, setPaused] = useState(false);
   const [topStores, setTopStores] = useState<any[]>([]);
   const [topItems, setTopItems] = useState<any[]>([]);
+  const [allItems, setAllItems] = useState<any[]>([]); // 🆕 for all items
   const [loading, setLoading] = useState(true);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
@@ -19,7 +21,6 @@ const DashboardMain = () => {
   console.log("Top Stores:", topStores);
   console.log("Top Items:", topItems);
 
-  // 🖼️ Hero slider content
   const slides = [
     {
       id: 1,
@@ -75,7 +76,7 @@ const DashboardMain = () => {
     touchEndX.current = null;
   };
 
-  // 🧠 Fetch top stores and top items
+  // 🧠 Fetch data
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -85,21 +86,19 @@ const DashboardMain = () => {
         .from("sales")
         .select(
           `
-    id,
-    store_id,
-    store_branches (
-      id,
-      name
-    )
-  `
+          id,
+          store_id,
+          store_branches (
+            id,
+            name
+          )
+        `
         );
 
       if (storeError) {
         console.error("Error fetching stores:", storeError);
       } else {
-        // 🧮 Count how many sales per store_id
         const storeCountMap = new Map();
-
         storeData?.forEach((sale: any) => {
           const id = sale.store_branches?.id || sale.store_id;
           const name = sale.store_branches?.name || "Unknown Store";
@@ -111,36 +110,45 @@ const DashboardMain = () => {
           }
         });
 
-        // 🔝 Sort by highest count and get top 3
         const topStoresList = Array.from(storeCountMap.values())
           .sort((a, b) => b.count - a.count)
           .slice(0, 3);
 
-        console.log("debug store list", topStoresList);
         setTopStores(topStoresList);
       }
 
-      // 🛒 Fetch top 3 items from order_items → orders → sales
+      // 🛒 Fetch top 3 items
       const { data: orderData, error: orderError } = await supabase
         .from("order_items")
         .select(
           `
-    id,
-    quantity,
-    inventory (
-      id,
-      item_name,
-      price
-    ),
-      orders(branch_id)
-  `
+          id,
+          quantity,
+          inventory (
+            id,
+            item_name,
+            price,
+            image
+          ),
+          orders(branch_id)
+        `
         )
         .order("quantity", { ascending: false })
         .limit(3);
 
       setTopItems(orderData || []);
 
-      console.log("Order Data:", orderData);
+      // 📦 Fetch all items from inventory (for “All Items” section)
+      const { data: inventoryData, error: inventoryError } = await supabase
+        .from("inventory")
+        .select("id, item_name, price, description,store_id,image");
+
+      if (inventoryError) {
+        console.error("Error fetching inventory:", inventoryError);
+      } else {
+        setAllItems(inventoryData || []);
+      }
+
       if (storeError || orderError) {
         console.error("Error fetching data:", storeError || orderError);
       }
@@ -155,7 +163,9 @@ const DashboardMain = () => {
     item.inventory?.item_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  console.log("Filtered Products:", filteredProducts);
+  const filteredAllItems = allItems.filter((item) =>
+    item.item_name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 md:px-8 py-8 space-y-10">
@@ -187,7 +197,7 @@ const DashboardMain = () => {
                 <p className="text-xs sm:text-sm md:text-lg text-gray-200 max-w-sm sm:max-w-xl">
                   {slide.subtitle}
                 </p>
-                <Button className="mt-3 sm:mt-4 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm md:text-base px-4 py-2">
+                <Button className="mt-3 sm:mt-4 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm md:text-base px-4 py-2">
                   {slide.buttonText}
                 </Button>
               </div>
@@ -217,7 +227,7 @@ const DashboardMain = () => {
               onClick={() => setCurrentSlide(index)}
               className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
                 currentSlide === index
-                  ? "bg-green-500 scale-110"
+                  ? "bg-blue-500 scale-110"
                   : "bg-gray-300 hover:bg-gray-400"
               }`}
             ></button>
@@ -227,9 +237,19 @@ const DashboardMain = () => {
 
       {/* 🏪 Featured Stores */}
       <section>
-        <h2 className="text-lg sm:text-2xl font-semibold mb-4 text-gray-800 text-center md:text-left">
-          Featured Stores
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg sm:text-2xl font-semibold mb-4 text-gray-800 text-center md:text-left">
+            Featured Stores
+          </h2>
+
+          <Button
+            onClick={() => navigate("/dashboard/stores")}
+            className="bg-blue-500"
+          >
+            View all stores
+          </Button>
+        </div>
+
         {loading ? (
           <p className="text-center text-gray-500">Loading stores...</p>
         ) : (
@@ -241,17 +261,9 @@ const DashboardMain = () => {
                 onClick={() => navigate(`/dashboard/store/${store.id}`)}
               >
                 <CardHeader className="flex flex-col items-center text-center">
-                  {/* <img
-                    src={store.logo}
-                    alt={store.name}
-                    className="w-14 h-14 sm:w-20 sm:h-20 rounded-full mb-3"
-                  /> */}
                   <CardTitle className="text-sm sm:text-lg font-semibold">
                     {store.name}
                   </CardTitle>
-                  {/* <p className="text-gray-500 text-xs sm:text-sm">
-                    {store.tagline}
-                  </p> */}
                 </CardHeader>
               </Card>
             ))}
@@ -285,27 +297,24 @@ const DashboardMain = () => {
                 className="group overflow-hidden hover:shadow-xl transition-all duration-300"
               >
                 <div className="relative h-32 sm:h-40 md:h-48 overflow-hidden">
-                  {/* <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  /> */}
+                  <img
+                    src={product.inventory?.image}
+                    alt="water image"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <CardContent className="p-2 sm:p-4 space-y-2">
                   <h3 className="text-xs sm:text-base font-semibold text-gray-800 line-clamp-1">
                     {product.inventory?.item_name}
                   </h3>
-                  <p className="text-xs sm:text-sm text-gray-500">
-                    {product.store}
-                  </p>
-                  <p className="text-green-700 font-bold text-xs sm:text-base">
+                  <p className="text-blue-700 font-bold text-xs sm:text-base">
                     ₱{product.inventory?.price.toLocaleString()}
                   </p>
                   <Button
                     onClick={() =>
                       navigate(`/dashboard/store/${product.orders.branch_id}`)
                     }
-                    className="w-full mt-2 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm"
+                    className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
                   >
                     Add to Cart
                   </Button>
@@ -313,6 +322,54 @@ const DashboardMain = () => {
               </Card>
             ))}
           </div>
+        )}
+      </section>
+
+      {/* 🆕 All Items Section */}
+      <section>
+        <h2 className="text-lg sm:text-2xl font-semibold mb-4 text-gray-800 text-center sm:text-left">
+          All Items
+        </h2>
+        {loading ? (
+          <p className="text-center text-gray-500">Loading items...</p>
+        ) : filteredAllItems.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-6">
+            {filteredAllItems.map((item) => (
+              <Card
+                key={item.id}
+                className="group overflow-hidden hover:shadow-lg transition-all duration-300"
+              >
+                <div className="relative h-32 sm:h-40 md:h-48 overflow-hidden">
+                  <img
+                    src={item.image}
+                    alt="water image"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <CardContent className="p-2 sm:p-4 space-y-2">
+                  <h3 className="text-xs sm:text-base font-semibold text-gray-800 line-clamp-1">
+                    {item.item_name}
+                  </h3>
+                  <p className="text-gray-500 text-xs line-clamp-2">
+                    {item.description}
+                  </p>
+                  <p className="text-blue-700 font-bold text-xs sm:text-base">
+                    ₱{item.price?.toLocaleString()}
+                  </p>
+                  <Button
+                    onClick={() =>
+                      navigate(`/dashboard/store/${item.store_id}`)
+                    }
+                    className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
+                  >
+                    View Details
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-gray-500">No items found.</p>
         )}
       </section>
     </div>
