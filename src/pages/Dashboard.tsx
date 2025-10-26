@@ -145,15 +145,16 @@ const Dashboard = () => {
         <div className="flex items-center gap-3 px-4">
           {/* ✅ Avatar Dropdown */}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger className="hidden sm:block" asChild>
               <button>
                 <Avatar className="cursor-pointer">
                   <AvatarImage src="https://github.com/shadcn.png" />
+
                   <AvatarFallback>U</AvatarFallback>
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48 ">
               <DropdownMenuLabel className="font-semibold">
                 {userFullName}
               </DropdownMenuLabel>
@@ -203,11 +204,18 @@ const Dashboard = () => {
               </Link>
             ))}
           </ul>
+
+          <div
+            className="w-full bg-red-500 px-4 py-2 flex items-center gap-1 text-white cursor-pointer"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-4 h-4 mr-2" /> Logout
+          </div>
         </div>
       )}
 
       {/* Main Content */}
-      <main className="flex-1 p-4 bg-gray-50 overflow-y-auto">
+      <main className="flex-1 sm:p-4 bg-gray-50 overflow-y-auto">
         <Outlet />
       </main>
     </div>

@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import supabase from "@/backend/config";
@@ -91,7 +97,8 @@ const DashboardMain = () => {
           store_branches (
             id,
             name,
-            store_image
+            store_image,
+            address
           )
         `
         );
@@ -104,9 +111,9 @@ const DashboardMain = () => {
           const id = sale.store_branches?.id || sale.store_id;
           const name = sale.store_branches?.name || "Unknown Store";
           const store_image = sale.store_branches?.store_image || "";
-
+          const address = sale.store_branches?.address || "";
           if (!storeCountMap.has(id)) {
-            storeCountMap.set(id, { id, name, count: 1, store_image });
+            storeCountMap.set(id, { id, name, count: 1, store_image, address });
           } else {
             storeCountMap.get(id).count += 1;
           }
@@ -259,7 +266,7 @@ const DashboardMain = () => {
             {topStores.map((store) => (
               <Card
                 key={store.id}
-                className="hover:shadow-xl transition-all duration-300 cursor-pointer"
+                className="hover:shadow-xl  transition-all duration-300 cursor-pointer"
                 onClick={() => navigate(`/dashboard/store/${store.id}`)}
               >
                 <CardHeader className="flex flex-col items-center text-center">
@@ -272,9 +279,13 @@ const DashboardMain = () => {
                     />
                   </div>
 
-                  <CardTitle className="text-sm sm:text-lg font-semibold">
+                  <CardTitle className="text-sm sm:text-lg text-left font-semibold">
                     {store.name}
                   </CardTitle>
+
+                  <CardDescription className="text-left text-xs">
+                    {store.address}{" "}
+                  </CardDescription>
                 </CardHeader>
               </Card>
             ))}
@@ -307,14 +318,14 @@ const DashboardMain = () => {
                 key={product.id}
                 className="group overflow-hidden hover:shadow-xl transition-all duration-300"
               >
-                <div className="relative h-32 sm:h-40 md:h-48 overflow-hidden">
+                <div className="relative h-20 sm:h-40 md:h-48 overflow-hidden">
                   <img
                     src={product.inventory?.image}
                     alt="water image"
                     className="w-full h-full object-contain"
                   />
                 </div>
-                <CardContent className="p-2 sm:p-4 space-y-2">
+                <CardContent className="p-3 sm:p-4 space-y-2">
                   <h3 className="text-xs sm:text-base font-semibold text-gray-800 line-clamp-1">
                     {product.inventory?.item_name}
                   </h3>
@@ -350,7 +361,7 @@ const DashboardMain = () => {
                 key={item.id}
                 className="group overflow-hidden hover:shadow-lg transition-all duration-300"
               >
-                <div className="relative h-32 sm:h-40 md:h-48 overflow-hidden">
+                <div className="relative h-20  sm:h-40 md:h-48 overflow-hidden">
                   <img
                     src={item.image}
                     alt="water image"

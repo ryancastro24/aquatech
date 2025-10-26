@@ -71,6 +71,7 @@ const StoreDetails: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [orderDialogOpen, setOrderDialogOpen] = useState<boolean>(false);
   const [deliveryAddress, setDeliveryAddress] = useState<string>("");
+  const [userContactNumber, setUserContactNumber] = useState<string>("");
   const [userId, setUserId] = useState<string | null>(null);
   const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
   const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
@@ -203,6 +204,7 @@ const StoreDetails: React.FC = () => {
             delivery_address: deliveryAddress,
             delivery_lat: lat,
             delivery_lng: lng,
+            contact_number: userContactNumber,
           },
         ])
         .select()
@@ -369,6 +371,12 @@ const StoreDetails: React.FC = () => {
                 <div className="text-right font-semibold text-lg">
                   Total: ₱{totalAmount.toFixed(2)}
                 </div>
+
+                <Input
+                  placeholder="Enter Contact Number"
+                  value={userContactNumber}
+                  onChange={(e) => setUserContactNumber(e.target.value)}
+                />
 
                 <Input
                   placeholder="Enter your delivery address..."

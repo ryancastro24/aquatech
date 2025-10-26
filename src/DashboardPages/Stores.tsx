@@ -3,6 +3,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TbShoppingCartPlus } from "react-icons/tb";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -60,10 +69,12 @@ const Stores = () => {
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [userContactNumber, setUserContactNumber] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
   const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
   const [gettingLocation, setGettingLocation] = useState(true);
+  const [orderSuccessPopup, setOrderSuccessPopup] = useState<boolean>(false);
   const [branchDistances, setBranchDistances] = useState<
     Record<number, number>
   >({});
@@ -216,6 +227,7 @@ const Stores = () => {
             delivery_address: deliveryAddress,
             delivery_lat: deliveryLat,
             delivery_lng: deliveryLng,
+            contact_number: userContactNumber,
           },
         ])
         .select()
@@ -237,7 +249,7 @@ const Stores = () => {
 
       if (itemsError) throw itemsError;
 
-      alert("✅ Order placed successfully!");
+      setOrderSuccessPopup(true);
       setOrderDialogOpen(false);
       setSelectedItems([]);
       setDeliveryAddress("");
@@ -490,118 +502,152 @@ const Stores = () => {
         </DialogContent>
       </Dialog>
 
-      {/* 🛒 Order Dialog */}
       <Dialog open={orderDialogOpen} onOpenChange={handleCloseOrderDialog}>
-        <DialogContent className="max-w-4xl font-[Poppins]">
+        <DialogContent className="max-w-4xl h-[90vh] overflow-hidden font-[Poppins] flex flex-col">
           {selectedBranch && (
             <>
-              <DialogHeader>
-                <DialogTitle>{selectedBranch.name} — Order Items</DialogTitle>
+              <DialogHeader className="flex-shrink-0">
+                <DialogTitle className="text-lg sm:text-xl font-semibold">
+                  {selectedBranch.name} — Order Items
+                </DialogTitle>
               </DialogHeader>
 
               {itemsLoading ? (
-                <div className="text-center text-gray-600 p-6">
+                <div className="text-center text-gray-600 p-6 flex-1 flex items-center justify-center">
                   Loading items...
                 </div>
               ) : (
                 <>
-                  {/* Items */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                    {inventoryItems.map((item) => {
-                      const selected = selectedItems.some(
-                        (i) => i.id === item.id
-                      );
-                      return (
-                        <Card
-                          key={item.id}
-                          className={`border-2 cursor-pointer transition ${
-                            selected
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 hover:border-blue-300"
-                          }`}
-                          onClick={() => toggleSelectItem(item)}
-                        >
-                          <CardContent className="p-4 text-gray-700 flex items-center gap-4">
-                            {/* ✅ Image on the left */}
-                            <div className="w-24 h-24 flex-shrink-0">
-                              <img
-                                src={item.image}
-                                alt={item.item_name}
-                                className="w-full h-full object-cover rounded-md"
-                              />
-                            </div>
+                  {/* ✅ Scrollable Content Area */}
+                  <div className="overflow-y-auto flex-1 pr-1">
+                    {/* ✅ Item Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mt-4">
+                      {inventoryItems.map((item) => {
+                        const selected = selectedItems.some(
+                          (i) => i.id === item.id
+                        );
+                        return (
+                          <Card
+                            key={item.id}
+                            className={`border-2 cursor-pointer transition-all duration-150 ${
+                              selected
+                                ? "border-blue-500 bg-blue-50 shadow-md"
+                                : "border-gray-200 hover:border-blue-300"
+                            }`}
+                            onClick={() => toggleSelectItem(item)}
+                          >
+                            <CardContent className="p-3 sm:p-4 text-gray-700 flex flex-col items-center sm:items-start gap-2">
+                              {/* ✅ Fixed Image Container */}
+                              <div className="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
+                                <img
+                                  src={item.image}
+                                  alt={item.item_name}
+                                  className="w-full h-full object-cover rounded-md"
+                                />
+                              </div>
 
-                            {/* ✅ Details on the right */}
-                            <div className="flex flex-col justify-center">
-                              <h3 className="text-base font-semibold">
-                                {item.item_name}
-                              </h3>
-                              <p className="text-sm">
-                                <span className="font-medium">Price:</span> ₱
-                                {item.price.toFixed(2)}
-                              </p>
-                              <p className="text-sm">
-                                <span className="font-medium">Stock:</span>{" "}
-                                {item.stock}
-                              </p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                              {/* ✅ Item Details */}
+                              <div className="text-center sm:text-left w-full">
+                                <h3 className="text-sm sm:text-base font-semibold line-clamp-1">
+                                  {item.item_name}
+                                </h3>
+                                <p className="text-xs sm:text-sm">
+                                  <span className="font-medium">Price:</span> ₱
+                                  {item.price.toFixed(2)}
+                                </p>
+                                <p className="text-xs sm:text-sm">
+                                  <span className="font-medium">Stock:</span>{" "}
+                                  {item.stock}
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+
+                    {/* ✅ Selected Items Section */}
+                    {selectedItems.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="font-semibold mb-3 text-base sm:text-lg">
+                          Selected Items
+                        </h3>
+
+                        <div className="overflow-x-auto">
+                          <Table className="min-w-full">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-sm sm:text-base">
+                                  Item
+                                </TableHead>
+                                <TableHead className="text-sm sm:text-base">
+                                  Price
+                                </TableHead>
+                                <TableHead className="text-sm sm:text-base">
+                                  Quantity
+                                </TableHead>
+                                <TableHead className="text-sm sm:text-base">
+                                  Subtotal
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {selectedItems.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell className="text-xs sm:text-sm">
+                                    {item.item_name}
+                                  </TableCell>
+                                  <TableCell className="text-xs sm:text-sm">
+                                    ₱{item.price.toFixed(2)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      max={item.stock}
+                                      value={item.quantity}
+                                      onChange={(e) =>
+                                        updateQuantity(
+                                          item.id,
+                                          Number(e.target.value)
+                                        )
+                                      }
+                                      className="w-16 sm:w-20 text-sm"
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-xs sm:text-sm">
+                                    ₱{(item.price * item.quantity).toFixed(2)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
+                  {/* ✅ Fixed Bottom Section */}
                   {selectedItems.length > 0 && (
-                    <div className="mt-6">
-                      <h3 className="font-semibold mb-2">Selected Items</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Item</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Quantity</TableHead>
-                            <TableHead>Subtotal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {selectedItems.map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell>{item.item_name}</TableCell>
-                              <TableCell>₱{item.price.toFixed(2)}</TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  max={item.stock}
-                                  value={item.quantity}
-                                  onChange={(e) =>
-                                    updateQuantity(
-                                      item.id,
-                                      Number(e.target.value)
-                                    )
-                                  }
-                                  className="w-20"
-                                />
-                              </TableCell>
-                              <TableCell>
-                                ₱{(item.price * item.quantity).toFixed(2)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-
-                      <div className="flex flex-col gap-4 mt-4">
-                        <div className="text-right font-semibold text-lg">
-                          Total: ₱{totalAmount.toFixed(2)}
-                        </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-5 pt-4 border-t flex-shrink-0 bg-white">
+                      <div className="text-right sm:text-left font-semibold text-base sm:text-lg">
+                        Total: ₱{totalAmount.toFixed(2)}
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <Input
+                          placeholder="Enter Contact Number"
+                          value={userContactNumber}
+                          onChange={(e) => setUserContactNumber(e.target.value)}
+                          className="flex-1 text-sm"
+                        />
                         <Input
                           placeholder="Enter your delivery address..."
                           value={deliveryAddress}
                           onChange={(e) => setDeliveryAddress(e.target.value)}
+                          className="flex-1 text-sm"
                         />
                         <Button
-                          className="w-full"
+                          className="w-full sm:w-auto"
                           onClick={handleSubmitOrder}
                           disabled={selectedItems.length === 0}
                         >
@@ -616,6 +662,23 @@ const Stores = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={orderSuccessPopup} onOpenChange={setOrderSuccessPopup}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Order succesfully placed</AlertDialogTitle>
+            <AlertDialogDescription>
+              Someone will contact you to confirm your order and arrange
+              delivery. Thank you for choosing our service!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setOrderSuccessPopup(false)}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

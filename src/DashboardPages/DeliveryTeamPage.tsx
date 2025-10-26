@@ -515,7 +515,7 @@ const DeliveryTeamPage = () => {
     return <div className="p-6 text-gray-600">Loading orders...</div>;
 
   return (
-    <div className=" sm:p-6">
+    <div className="p-4 sm:p-6">
       <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800">
         Delivery Team Orders
       </h2>
