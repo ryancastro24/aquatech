@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "../components/ui/card";
+import { Card, CardHeader, CardContent } from "../components/ui/card";
+import logo from "@/assets/aquatech_logo.png";
+import aquatec_bg from "@/assets/aquatech_bg2.jpg";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -194,12 +191,17 @@ const LoginPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <Card className="w-[380px] shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl font-bold">
-            Welcome Back
-          </CardTitle>
+    <div
+      className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${aquatec_bg})` }}
+    >
+      {/* Optional overlay for readability */}
+      <div className="absolute inset-0 "></div>
+
+      {/* Content Card */}
+      <Card className="w-[380px] shadow-lg relative z-10 bg-white/95 backdrop-blur-sm">
+        <CardHeader className="flex items-center justify-center">
+          <img src={logo} alt="aquatech logo" className="w-44" />
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -230,7 +232,6 @@ const LoginPage = () => {
             />
           </div>
 
-          {/* ✅ Login Button with Loading */}
           <Button className="w-full" onClick={handleLogin} disabled={loading}>
             {loading ? "Logging in..." : "Login"}
           </Button>
@@ -240,7 +241,7 @@ const LoginPage = () => {
             <span className="bg-white px-2 text-gray-500 text-sm z-10">or</span>
           </div>
 
-          {/* ✅ OAuth Buttons with Loading */}
+          {/* OAuth Buttons */}
           <div className="space-y-2">
             <Button
               variant="outline"
