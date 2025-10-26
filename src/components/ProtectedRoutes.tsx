@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import supabase from "@/backend/config";
-
+import LoadingUI from "./LoadingUI";
 interface ProtectedRouteProps {
   children: ReactNode;
 }
@@ -31,7 +31,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     };
   }, []);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingUI />
+      </div>
+    );
 
   // ✅ Redirect if not logged in
   if (!isAuthenticated) return <Navigate to="/" replace />;

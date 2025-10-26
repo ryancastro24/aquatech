@@ -41,6 +41,7 @@ interface InventoryItem {
   price: number;
   stock: number;
   store_id: number;
+  image: string;
 }
 
 interface SelectedItem extends InventoryItem {
@@ -159,7 +160,7 @@ const Stores = () => {
     setItemsLoading(true);
     const { data, error } = await supabase
       .from("inventory")
-      .select("id, item_name, price, stock, store_id")
+      .select("id, item_name, price, stock, store_id, image")
       .eq("store_id", branchId);
     if (error) console.error("Error fetching inventory:", error);
     else setInventoryItems(data);
@@ -520,18 +521,30 @@ const Stores = () => {
                           }`}
                           onClick={() => toggleSelectItem(item)}
                         >
-                          <CardContent className="p-4 text-gray-700">
-                            <h3 className="text-base font-semibold">
-                              {item.item_name}
-                            </h3>
-                            <p className="text-sm">
-                              <span className="font-medium">Price:</span> ₱
-                              {item.price.toFixed(2)}
-                            </p>
-                            <p className="text-sm">
-                              <span className="font-medium">Stock:</span>{" "}
-                              {item.stock}
-                            </p>
+                          <CardContent className="p-4 text-gray-700 flex items-center gap-4">
+                            {/* ✅ Image on the left */}
+                            <div className="w-24 h-24 flex-shrink-0">
+                              <img
+                                src={item.image}
+                                alt={item.item_name}
+                                className="w-full h-full object-cover rounded-md"
+                              />
+                            </div>
+
+                            {/* ✅ Details on the right */}
+                            <div className="flex flex-col justify-center">
+                              <h3 className="text-base font-semibold">
+                                {item.item_name}
+                              </h3>
+                              <p className="text-sm">
+                                <span className="font-medium">Price:</span> ₱
+                                {item.price.toFixed(2)}
+                              </p>
+                              <p className="text-sm">
+                                <span className="font-medium">Stock:</span>{" "}
+                                {item.stock}
+                              </p>
+                            </div>
                           </CardContent>
                         </Card>
                       );

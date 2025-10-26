@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import React from "react";
 import {
   Table,
   TableBody,
@@ -13,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -35,6 +37,11 @@ interface Order {
   delivery_lat: number;
   delivery_lng: number;
   created_at: string;
+  contact_number: string;
+  cancel_reason: string | null;
+  users: {
+    full_name: string;
+  };
 }
 
 interface OrderItem {
@@ -74,8 +81,8 @@ const DeliveryTeamPage = () => {
   const [branchId, setBranchId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("pending");
-
-  console.log("selected storedId", branchId);
+  const [openDialogId, setOpenDialogId] = useState<string | null>(null);
+  console.log("orders", orders);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -111,7 +118,7 @@ const DeliveryTeamPage = () => {
       setLoading(true);
       const { data } = await supabase
         .from("orders")
-        .select("*")
+        .select("*,users(*)")
         .eq("branch_id", branchId)
         .order("created_at", { ascending: false });
       if (data) setOrders(data);
@@ -363,34 +370,138 @@ const DeliveryTeamPage = () => {
     }
   };
 
+  // -------------------------
+  // UPDATED TABLE (renderTable)
+  // -------------------------
   const renderTable = (filteredOrders: Order[]) => (
-    <div className="overflow-x-auto rounded-lg border">
-      <Table>
-        <TableHeader>
+    <div className="w-full overflow-x-auto rounded-lg border">
+      <Table className="w-full min-w-full table-auto">
+        <TableHeader className="bg-gray-50">
           <TableRow>
-            <TableHead>Order ID</TableHead>
-            <TableHead>Total</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Address</TableHead>
+            <TableHead className="w-[120px]">Order ID</TableHead>
+            <TableHead className="w-[150px]">Customer Name</TableHead>
+            <TableHead className="hidden sm:table-cell w-[150px]">
+              Contact Number
+            </TableHead>
+            <TableHead className="hidden sm:table-cell w-[100px]">
+              Total
+            </TableHead>
+            <TableHead className="hidden sm:table-cell w-[120px]">
+              Status
+            </TableHead>
+            <TableHead className="hidden md:table-cell">Address</TableHead>
+            <TableHead className="sm:hidden text-center w-[80px]">
+              Details
+            </TableHead>
           </TableRow>
         </TableHeader>
+
         <TableBody>
           {filteredOrders.length ? (
             filteredOrders.map((order) => (
-              <TableRow
-                key={order.id}
-                className="cursor-pointer hover:bg-gray-100"
-                onClick={() => setSelectedOrder(order)}
-              >
-                <TableCell>{order.id.slice(0, 8)}</TableCell>
-                <TableCell>₱{order.total_amount.toFixed(2)}</TableCell>
-                <TableCell>{order.status}</TableCell>
-                <TableCell>{order.delivery_address}</TableCell>
-              </TableRow>
+              <React.Fragment key={order.id}>
+                <TableRow
+                  className={`cursor-pointer hover:bg-gray-100 transition-colors ${
+                    order.status === "on_delivery" ? "bg-blue-500" : ""
+                  }`}
+                  onClick={() => setSelectedOrder(order)}
+                >
+                  <TableCell
+                    className={`truncate ${
+                      order.status === "on_delivery" ? "text-white" : ""
+                    }`}
+                  >
+                    {order.id.slice(0, 8)}
+                  </TableCell>
+
+                  <TableCell
+                    className={`${
+                      order.status === "on_delivery" ? "text-white" : ""
+                    }`}
+                  >
+                    {order.users?.full_name || "N/A"}
+                  </TableCell>
+
+                  <TableCell className="hidden sm:table-cell truncate">
+                    {order.contact_number || "N/A"}
+                  </TableCell>
+
+                  <TableCell className="hidden sm:table-cell truncate">
+                    ₱{order.total_amount.toFixed(2)}
+                  </TableCell>
+
+                  <TableCell className="hidden sm:table-cell truncate">
+                    {order.status}
+                  </TableCell>
+
+                  <TableCell className="hidden md:table-cell truncate max-w-xs">
+                    {order.delivery_address}
+                  </TableCell>
+
+                  {/* Mobile dropdown (works in all tabs) */}
+                  <TableCell
+                    className="sm:hidden text-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Dialog
+                      open={openDialogId === order.id}
+                      onOpenChange={(open) =>
+                        setOpenDialogId(open ? order.id : null)
+                      }
+                    >
+                      <Button
+                        variant="link"
+                        className={`text-blue-600 font-medium underline text-sm p-0 h-auto ${
+                          order.status === "on_delivery" ? "text-white" : ""
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDialogId(order.id);
+                        }}
+                      >
+                        View
+                      </Button>
+
+                      <DialogContent
+                        className="max-w-sm sm:max-w-md font-[Poppins]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DialogHeader>
+                          <DialogTitle className="text-left">
+                            Order Details
+                          </DialogTitle>
+                          <DialogDescription className="text-left">
+                            Here are the details for this order.
+                          </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-2 text-sm mt-2">
+                          <p>
+                            <span className="font-medium">Contact:</span>{" "}
+                            {order.contact_number || "N/A"}
+                          </p>
+                          <p>
+                            <span className="font-medium">Total:</span> ₱
+                            {order.total_amount?.toFixed(2)}
+                          </p>
+                          <p>
+                            <span className="font-medium">Status:</span>{" "}
+                            {order.status}
+                          </p>
+                          <p>
+                            <span className="font-medium">Address:</span>{" "}
+                            {order.delivery_address}
+                          </p>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </TableCell>
+                </TableRow>
+              </React.Fragment>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-gray-500">
+              <TableCell colSpan={7} className="text-center text-gray-500">
                 No orders found.
               </TableCell>
             </TableRow>
@@ -404,7 +515,7 @@ const DeliveryTeamPage = () => {
     return <div className="p-6 text-gray-600">Loading orders...</div>;
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className=" sm:p-6">
       <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800">
         Delivery Team Orders
       </h2>
@@ -436,104 +547,170 @@ const DeliveryTeamPage = () => {
       </Tabs>
 
       {/* Order Details Dialog */}
+      {/* Order Details Dialog */}
       <Dialog
         open={!!selectedOrder}
         onOpenChange={() => setSelectedOrder(null)}
       >
-        <DialogContent className="max-w-[95vw] md:max-w-4xl">
-          {selectedOrder && (
-            <>
-              <DialogHeader>
-                <DialogTitle>
-                  Deliver Order #{selectedOrder.id.slice(0, 8)}
-                </DialogTitle>
-              </DialogHeader>
+        {selectedOrder && (
+          <>
+            {/* ✅ PENDING / ON_DELIVERY DIALOG */}
+            {(selectedOrder.status === "pending" ||
+              selectedOrder.status === "on_delivery") && (
+              <DialogContent className="max-w-[95vw] md:max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    Deliver Order #{selectedOrder.id.slice(0, 8)}
+                  </DialogTitle>
+                </DialogHeader>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                <div>
-                  <h3 className="font-semibold mb-2">Items</h3>
-                  <div className="overflow-x-auto border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item</TableHead>
-                          <TableHead>Qty</TableHead>
-                          <TableHead>Price</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {orderItems.map((i) => (
-                          <TableRow key={i.id}>
-                            <TableCell>{i.inventory.item_name}</TableCell>
-                            <TableCell>{i.quantity}</TableCell>
-                            <TableCell>₱{i.price.toFixed(2)}</TableCell>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                  <div>
+                    <h3 className="font-semibold mb-2">Items</h3>
+                    <div className="overflow-x-auto border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Item</TableHead>
+                            <TableHead>Qty</TableHead>
+                            <TableHead>Price</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {orderItems.map((i) => (
+                            <TableRow key={i.id}>
+                              <TableCell>{i.inventory.item_name}</TableCell>
+                              <TableCell>{i.quantity}</TableCell>
+                              <TableCell>₱{i.price.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="mt-4 text-right font-semibold text-gray-700">
+                      Total Amount: ₱
+                      {selectedOrder.total_amount?.toFixed(2) || "0.00"}
+                    </div>
                   </div>
 
-                  <div className="mt-4 text-right font-semibold text-gray-700">
-                    Total Amount: ₱
-                    {selectedOrder.total_amount?.toFixed(2) || "0.00"}
-                  </div>
+                  {userLocation ? (
+                    <MapContainer
+                      center={[userLocation.lat, userLocation.lng]}
+                      zoom={13}
+                      style={{
+                        height: window.innerWidth < 768 ? "250px" : "400px",
+                        width: "100%",
+                        borderRadius: "10px",
+                      }}
+                    >
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <Marker position={[userLocation.lat, userLocation.lng]} />
+                      <Marker
+                        position={[
+                          selectedOrder.delivery_lat,
+                          selectedOrder.delivery_lng,
+                        ]}
+                        icon={redIcon}
+                      />
+                      {routeCoords.length > 0 && (
+                        <Polyline positions={routeCoords} color="blue" />
+                      )}
+                    </MapContainer>
+                  ) : (
+                    <div className="text-gray-500 py-10 text-center">
+                      Getting location...
+                    </div>
+                  )}
                 </div>
 
-                {userLocation ? (
-                  <MapContainer
-                    center={[userLocation.lat, userLocation.lng]}
-                    zoom={13}
-                    style={{
-                      height: window.innerWidth < 768 ? "250px" : "400px",
-                      width: "100%",
-                      borderRadius: "10px",
-                    }}
+                <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2">
+                  <Button
+                    onClick={() => handleStartDelivery(selectedOrder)}
+                    disabled={actionLoading}
                   >
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    <Marker position={[userLocation.lat, userLocation.lng]} />
-                    <Marker
-                      position={[
-                        selectedOrder.delivery_lat,
-                        selectedOrder.delivery_lng,
-                      ]}
-                      icon={redIcon}
-                    />
-                    {routeCoords.length > 0 && (
-                      <Polyline positions={routeCoords} color="blue" />
-                    )}
-                  </MapContainer>
-                ) : (
-                  <div className="text-gray-500 py-10 text-center">
-                    Getting location...
-                  </div>
-                )}
-              </div>
+                    Start Delivery
+                  </Button>
+                  <Button
+                    className="bg-green-600"
+                    onClick={() => setShowPaymentDialog(true)}
+                    disabled={actionLoading}
+                  >
+                    Confirm Delivered
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowCancelDialog(true)}
+                    disabled={actionLoading}
+                  >
+                    Cancel Order
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            )}
 
-              <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2">
-                <Button
-                  onClick={() => handleStartDelivery(selectedOrder)}
-                  disabled={actionLoading}
-                >
-                  Start Delivery
-                </Button>
-                <Button
-                  className="bg-green-600"
-                  onClick={() => setShowPaymentDialog(true)}
-                  disabled={actionLoading}
-                >
-                  Confirm Delivered
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setShowCancelDialog(true)}
-                  disabled={actionLoading}
-                >
-                  Cancel Order
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
+            {/* ✅ DELIVERED DIALOG */}
+            {selectedOrder.status === "delivered" && (
+              <DialogContent className="max-w-[95vw] md:max-w-md font-[Poppins]">
+                <DialogHeader>
+                  <DialogTitle>Delivered Order Details</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <p className="text-xs">
+                    <strong>Customer:</strong> {selectedOrder.users.full_name}
+                  </p>
+                  <p className="text-xs">
+                    <strong>Contact:</strong> {selectedOrder.contact_number}
+                  </p>
+                  <p className="text-xs">
+                    <strong>Address:</strong> {selectedOrder.delivery_address}
+                  </p>
+                  <p className="text-xs">
+                    <strong>Total Amount:</strong> ₱
+                    {selectedOrder.total_amount.toFixed(2)}
+                  </p>
+                  <p className="text-xs">
+                    <strong>Status:</strong> {selectedOrder.status}
+                  </p>
+
+                  {/* Fetch from sales table for mode of payment and proof */}
+                  <DeliveredDetails orderId={selectedOrder.id} />
+                </div>
+              </DialogContent>
+            )}
+
+            {/* ✅ CANCELLED DIALOG */}
+            {selectedOrder.status === "cancelled" && (
+              <DialogContent className="max-w-[95vw] md:max-w-md font-[Poppins]">
+                <DialogHeader>
+                  <DialogTitle>Cancelled Order Details</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <p className="text-xs">
+                    <strong>Customer:</strong> {selectedOrder.users.full_name}
+                  </p>
+                  <p className="text-xs">
+                    <strong>Contact:</strong> {selectedOrder.contact_number}
+                  </p>
+                  <p className="text-xs">
+                    <strong>Address:</strong> {selectedOrder.delivery_address}
+                  </p>
+                  <p className="text-xs">
+                    <strong>Total Amount:</strong> ₱
+                    {selectedOrder.total_amount.toFixed(2)}
+                  </p>
+                  <p className="text-xs">
+                    <strong>Status:</strong> {selectedOrder.status}
+                  </p>
+                  <p className="text-xs">
+                    <strong>Cancel Reason:</strong>{" "}
+                    {selectedOrder.cancel_reason || "N/A"}
+                  </p>
+                </div>
+              </DialogContent>
+            )}
+          </>
+        )}
       </Dialog>
 
       {/* Payment Dialog */}
@@ -656,3 +833,49 @@ const DeliveryTeamPage = () => {
 };
 
 export default DeliveryTeamPage;
+
+const DeliveredDetails = ({ orderId }: { orderId: string }) => {
+  const [details, setDetails] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchSales = async () => {
+      const { data } = await supabase
+        .from("sales")
+        .select("*")
+        .eq("order_id", orderId)
+        .maybeSingle();
+      setDetails(data);
+    };
+    fetchSales();
+  }, [orderId]);
+
+  if (!details)
+    return <p className="text-gray-500 text-sm">Loading payment details...</p>;
+
+  return (
+    <div className="mt-2 space-y-2 border-t pt-2 ">
+      <p className="text-xs">
+        <strong>Mode of Payment:</strong> {details.mode_of_payment}
+      </p>
+      {details.mode_of_payment === "gcash" && (
+        <p className="text-xs">
+          <strong>GCash Ref Code:</strong> {details.gcash_ref_code}
+        </p>
+      )}
+      <p className="text-xs">
+        <strong>Recorded Total:</strong> ₱{details.total_amount.toFixed(2)}
+      </p>
+
+      {details.proof_image && (
+        <div>
+          <p className="font-semibold mt-2">Proof of Delivery:</p>
+          <img
+            src={details.proof_image}
+            alt="Proof"
+            className="w-full h-48 object-cover rounded-lg border"
+          />
+        </div>
+      )}
+    </div>
+  );
+};

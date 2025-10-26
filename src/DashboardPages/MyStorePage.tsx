@@ -225,7 +225,7 @@ const MyStorePage: React.FC = () => {
       }
     }
 
-    const { data: storeData, error } = await supabase
+    const { error } = await supabase
       .from("stores")
       .insert({
         owner_id: userId,
@@ -243,16 +243,6 @@ const MyStorePage: React.FC = () => {
       return;
     }
 
-    if (!error && storeData) {
-      await supabase.from("store_branches").insert({
-        store_id: storeData?.id,
-        name: "Main Branch",
-        address,
-        contact_number,
-        latitude,
-        longitude,
-      });
-    }
     alert("Store added successfully!");
 
     setFormData({

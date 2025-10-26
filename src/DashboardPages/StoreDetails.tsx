@@ -29,7 +29,15 @@ import {
 } from "@/components/ui/table";
 import { TbShoppingCartPlus } from "react-icons/tb";
 import supabase from "@/backend/config";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 // 🧩 Types
 interface InventoryItem {
   id: string;
@@ -58,7 +66,7 @@ const StoreDetails: React.FC = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-
+  const [orderSuccessPopup, setOrderSuccessPopup] = useState<boolean>(false);
   // 🧾 Ordering states
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [orderDialogOpen, setOrderDialogOpen] = useState<boolean>(false);
@@ -218,7 +226,7 @@ const StoreDetails: React.FC = () => {
 
       if (itemsError) throw itemsError;
 
-      alert("✅ Order placed successfully!");
+      setOrderSuccessPopup(true);
       setOrderDialogOpen(false);
       setSelectedItems([]);
       setDeliveryAddress("");
@@ -382,6 +390,23 @@ const StoreDetails: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={orderSuccessPopup} onOpenChange={setOrderSuccessPopup}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Order succesfully placed</AlertDialogTitle>
+            <AlertDialogDescription>
+              Someone will contact you to confirm your order and arrange
+              delivery. Thank you for choosing our service!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setOrderSuccessPopup(false)}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

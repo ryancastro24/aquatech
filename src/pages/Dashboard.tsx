@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, LogOut, User } from "lucide-react";
 import supabase from "@/backend/config";
+import LoadingUI from "@/components/LoadingUI";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,7 +105,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">
-        Loading dashboard...
+        <LoadingUI />
       </div>
     );
   }

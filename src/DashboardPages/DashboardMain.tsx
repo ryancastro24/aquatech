@@ -90,7 +90,8 @@ const DashboardMain = () => {
           store_id,
           store_branches (
             id,
-            name
+            name,
+            store_image
           )
         `
         );
@@ -102,9 +103,10 @@ const DashboardMain = () => {
         storeData?.forEach((sale: any) => {
           const id = sale.store_branches?.id || sale.store_id;
           const name = sale.store_branches?.name || "Unknown Store";
+          const store_image = sale.store_branches?.store_image || "";
 
           if (!storeCountMap.has(id)) {
-            storeCountMap.set(id, { id, name, count: 1 });
+            storeCountMap.set(id, { id, name, count: 1, store_image });
           } else {
             storeCountMap.get(id).count += 1;
           }
@@ -261,6 +263,15 @@ const DashboardMain = () => {
                 onClick={() => navigate(`/dashboard/store/${store.id}`)}
               >
                 <CardHeader className="flex flex-col items-center text-center">
+                  <div>
+                    <img
+                      src={store.store_image}
+                      alt={store.name}
+                      className="w-full h-full object-cover"
+                      draggable="false"
+                    />
+                  </div>
+
                   <CardTitle className="text-sm sm:text-lg font-semibold">
                     {store.name}
                   </CardTitle>
