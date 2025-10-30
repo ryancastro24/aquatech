@@ -18,6 +18,7 @@ import DeliveryTeamPage from "./DashboardPages/DeliveryTeamPage";
 import PublicRoute from "./components/ui/PublicRoutes";
 import ProtectedRoute from "./components/ProtectedRoutes";
 import CustomerOrderHistory from "./DashboardPages/CustomerOrderHistory";
+import AdsManagemet from "./DashboardPages/AdsManagemet";
 import StoreDetails, {
   loader as storeDetailsLoader,
 } from "./DashboardPages/StoreDetails";
@@ -42,6 +43,10 @@ const router = createBrowserRouter([
       {
         path: "dashboard_main",
         element: <DashboardMain />,
+      },
+      {
+        path: "ads_management",
+        element: <AdsManagemet />,
       },
       {
         path: "stores",

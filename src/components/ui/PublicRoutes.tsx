@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import supabase from "@/backend/config";
-
+import LoadingUI from "../LoadingUI";
 interface PublicRouteProps {
   children: ReactNode;
 }
@@ -29,7 +29,7 @@ const PublicRoute = ({ children }: PublicRouteProps) => {
     };
   }, []);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <LoadingUI />;
 
   // ✅ If already logged in, redirect to dashboard
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;

@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, LogOut, User } from "lucide-react";
 import supabase from "@/backend/config";
 import LoadingUI from "@/components/LoadingUI";
+import logo from "@/assets/aquatech_logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,7 @@ const Dashboard = () => {
       const fullName = `${firstname} ${lastname}`.trim() || "User";
 
       setRole(userRole);
+      console.log("User Role:", userRole);
       setUserFullName(fullName);
       setLoading(false);
     };
@@ -75,11 +77,7 @@ const Dashboard = () => {
       label: "My Store",
       roles: ["business_owner"],
     },
-    {
-      path: "/dashboard/delivery_agent_management",
-      label: "Delivery Agents",
-      roles: ["admin"],
-    },
+
     {
       path: "/dashboard/delivery_team_management",
       label: "Delivery",
@@ -90,6 +88,11 @@ const Dashboard = () => {
       path: "/dashboard/customerorderhistory",
       label: "My Orders",
       roles: ["customer"],
+    },
+    {
+      path: "/dashboard/ads_management",
+      label: "Ads Management",
+      roles: ["admin"],
     },
   ];
 
@@ -117,8 +120,8 @@ const Dashboard = () => {
         {/* Left Section */}
         <div className="flex items-center w-full">
           {/* Logo */}
-          <div className="bg-blue-500 px-4 py-3 text-white font-bold italic">
-            AQUATECH
+          <div className="p-2">
+            <img src={logo} alt="aquatech logo" className="w-[150px]" />
           </div>
 
           {/* Desktop Nav */}

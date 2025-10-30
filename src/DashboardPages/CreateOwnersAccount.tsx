@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import supabase from "@/backend/config";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -36,6 +38,7 @@ const CreateOwnersAccount = () => {
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
 
   // --- FETCH BUSINESS OWNERS ---
   const fetchOwners = async () => {
@@ -54,44 +57,67 @@ const CreateOwnersAccount = () => {
   }, []);
 
   // --- HANDLE ADD NEW OWNER ---
+  // --- HANDLE ADD NEW OWNER ---
   const handleAddOwner = async () => {
     const { full_name, email, password } = formData;
-
     if (!full_name || !email || !password) {
       alert("Please fill in all fields");
       return;
     }
 
-    // Create Auth user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name, role: "business_owner" },
-      },
-    });
+    setLoading(true);
 
-    if (authError) {
-      alert(authError.message);
-      return;
-    }
+    try {
+      // 1️⃣ Create Auth user with metadata
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name, role: "business_owner" }, // 👈 important
+        },
+      });
+      if (authError) throw authError;
 
-    // Insert into public.users
-    const { error: insertError } = await supabase.from("users").insert({
-      auth_id: authData.user?.id,
-      full_name,
-      email,
-      role: "business_owner",
-    });
+      const userId = authData.user?.id;
+      if (!userId) throw new Error("User ID not returned from Auth.");
 
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      alert("Failed to save to users table.");
-    } else {
-      alert("Business owner added successfully!");
+      // 2️⃣ Small delay for DB trigger (if any)
+      await new Promise((r) => setTimeout(r, 400));
+
+      // 3️⃣ Ensure correct role in public.users table
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("id, role")
+        .eq("auth_id", userId)
+        .maybeSingle();
+
+      if (!existingUser) {
+        await supabase.from("users").insert({
+          auth_id: userId,
+          full_name,
+          email,
+          role: "business_owner",
+        });
+      } else if (existingUser.role !== "business_owner") {
+        await supabase
+          .from("users")
+          .update({ full_name, role: "business_owner" })
+          .eq("auth_id", userId);
+      }
+
+      alert("✅ Business owner added successfully!");
       setShowDialog(false);
       setFormData({ full_name: "", email: "", password: "" });
       fetchOwners();
+    } catch (err: any) {
+      if (err.code === "23505") {
+        alert("This email is already in use.");
+      } else {
+        alert("Error: " + err.message);
+      }
+      console.error("Add owner error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -247,10 +273,16 @@ const CreateOwnersAccount = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDialog(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button onClick={handleAddOwner}>Save</Button>
+            <Button onClick={handleAddOwner} disabled={loading}>
+              {loading ? "Saving..." : "Save"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

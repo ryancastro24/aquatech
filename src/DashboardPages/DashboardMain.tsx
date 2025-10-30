@@ -23,51 +23,53 @@ const DashboardMain = () => {
   const [loading, setLoading] = useState(true);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
-
+  const [ads, setAds] = useState<any[]>([]);
   console.log("Top Stores:", topStores);
   console.log("Top Items:", topItems);
 
-  const slides = [
-    {
-      id: 1,
-      title: "Welcome to AgriHub Marketplace 🌾",
-      subtitle:
-        "Discover tools, equipment, and farm essentials at the best prices.",
+  // 🪧 Fetch ads for dynamic slideshow
+  const fetchAds = async () => {
+    const { data, error } = await supabase
+      .from("ads")
+      .select(
+        "id, cover_image, promo1, promo2, promo3, prize, expiry_date, store_id, store_branches(name)"
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching ads:", error);
+      return;
+    }
+
+    // Format ads data to match your slide display
+    const formatted = data.map((ad: any) => ({
+      id: ad.id,
+      title: ad.promo1 || "Promotion",
+      subtitle: ad.promo2 || "",
       image:
-        "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1200",
-      buttonText: "Explore Now",
-    },
-    {
-      id: 2,
-      title: "Big Sale on Farming Tools 🔧",
-      subtitle: "Up to 40% off on selected FarmTech tools this week only!",
-      image:
-        "https://images.unsplash.com/photo-1602524819190-7c43a63c9a12?w=1200",
-      buttonText: "Shop Tools",
-    },
-    {
-      id: 3,
-      title: "Exclusive Offer: Fertilizers 💚",
-      subtitle:
-        "Get premium organic fertilizers with free shipping nationwide!",
-      image:
-        "https://images.unsplash.com/photo-1590080875838-66c8893a0db0?w=1200",
-      buttonText: "Buy Fertilizers",
-    },
-  ];
+        ad.cover_image || "https://via.placeholder.com/1200x600?text=No+Image",
+      buttonText: ad.promo3 || "Shop Now",
+      prize: ad.prize,
+      expiry_date: ad.expiry_date,
+      store_name: ad.store_branches?.name || "AgriHub Store",
+      store_id: ad.store_id,
+    }));
+
+    setAds(formatted);
+  };
 
   // 🕒 Auto slide
   useEffect(() => {
-    if (paused) return;
+    if (paused || ads.length === 0) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
+      setCurrentSlide((prev) => (prev + 1) % ads.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [slides.length, paused]);
+  }, [ads.length, paused]);
 
   const prevSlide = () =>
-    setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
-  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+    setCurrentSlide((prev) => (prev === 0 ? ads.length - 1 : prev - 1));
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % ads.length);
 
   // 📱 Swipe gesture
   const handleTouchStart = (e: React.TouchEvent) =>
@@ -166,6 +168,7 @@ const DashboardMain = () => {
     };
 
     fetchData();
+    fetchAds(); // 🆕 fetch dynamic ads for slideshow
   }, []);
 
   const filteredProducts = topItems.filter((item) =>
@@ -180,7 +183,7 @@ const DashboardMain = () => {
     <div className="min-h-screen bg-gray-50 px-4 md:px-8 py-8 space-y-10">
       {/* 🧭 Hero Slider */}
       <div
-        className="relative group w-full h-56 sm:h-64 md:h-80 rounded-2xl overflow-hidden shadow-lg"
+        className="relative group w-full h-56 sm:h-64 md:h-80 rounded overflow-hidden shadow-lg"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={handleTouchStart}
@@ -191,27 +194,42 @@ const DashboardMain = () => {
           className="flex transition-transform duration-700 ease-in-out"
           style={{ transform: `translateX(-${currentSlide * 100}%)` }}
         >
-          {slides.map((slide) => (
-            <div key={slide.id} className="min-w-full relative flex-shrink-0">
-              <img
-                src={slide.image}
-                alt={slide.title}
-                className="w-full h-full object-cover"
-                draggable="false"
-              />
-              <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white text-center p-4 sm:p-6">
-                <h1 className="text-xl sm:text-2xl md:text-4xl font-bold mb-2 leading-tight">
-                  {slide.title}
-                </h1>
-                <p className="text-xs sm:text-sm md:text-lg text-gray-200 max-w-sm sm:max-w-xl">
-                  {slide.subtitle}
-                </p>
-                <Button className="mt-3 sm:mt-4 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm md:text-base px-4 py-2">
-                  {slide.buttonText}
-                </Button>
+          {ads.length > 0 ? (
+            ads.map((ad) => (
+              <div
+                key={ad.id}
+                className="relative w-full h-[400px] sm:h-[500px] md:h-[600px] flex-shrink-0 overflow-hidden"
+              >
+                {/* Background Image */}
+                <img
+                  src={ad.image}
+                  alt={ad.title}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  draggable="false"
+                />
+
+                {/* Overlay */}
+                <div className="absolute bg-blue-500 right-0 rounded-bl-lg  flex flex-col items-center justify-center text-white text-center p-4 sm:p-6 z-30">
+                  <h1 className="text-xl  md:text-2xl font-bold mb-2 leading-tight">
+                    {ad.store_name || "Default Promo Title"}
+                  </h1>
+                  <p className="text-xs sm:text-xs md:text-sm text-gray-200 max-w-sm sm:max-w-xl">
+                    {ad.title || "Default Promo Description"}
+                  </p>
+                  <Button
+                    onClick={() => navigate(`/dashboard/store/${ad.store_id}`)}
+                    className="mt-3 sm:mt-4 bg-blue-600 cursor-pointer hover:bg-blue-700 text-white text-xs sm:text-sm md:text-base px-4 py-2"
+                  >
+                    Avail Promo
+                  </Button>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              No ads available
             </div>
-          ))}
+          )}
         </div>
 
         {/* Arrows */}
@@ -230,7 +248,7 @@ const DashboardMain = () => {
 
         {/* Dots */}
         <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
-          {slides.map((_, index) => (
+          {ads.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}

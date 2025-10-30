@@ -186,6 +186,7 @@ const DeliveryTeamPage = () => {
     }
   };
 
+  console.log("orders", orders);
   useEffect(() => {
     const loadItems = async () => {
       if (!selectedOrder) return;
@@ -210,11 +211,12 @@ const DeliveryTeamPage = () => {
     loadItems();
   }, [selectedOrder, userLocation]);
 
-  const handleStartDelivery = async (order: Order) => {
+  const handleStartDelivery = async (order: any) => {
     const { error } = await supabase
       .from("orders")
       .update({ status: "on_delivery" })
       .eq("id", order.id);
+
     if (!error) {
       alert("Delivery started!");
       setOrders((prev) =>
@@ -223,6 +225,34 @@ const DeliveryTeamPage = () => {
         )
       );
       setSelectedOrder(null);
+
+      // ✅ Send SMS via your Express backend
+      const message = `Hi ${
+        order.users.full_name
+      }, your order is now on delivery! , Total amount: ₱${Number(
+        order.total_amount
+      ).toFixed(
+        2
+      )}.Please prepare exact amount for cash or gcash payments.  Thank you for trusting AQUATECH! `;
+
+      try {
+        const res = await fetch(
+          "https://aquatech-express-1.onrender.com/api/send-sms",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              number: order.contact_number,
+              message,
+            }),
+          }
+        );
+
+        const data = await res.json();
+        console.log("✅ SMS sent:", data);
+      } catch (err) {
+        console.error("❌ Error sending SMS:", err);
+      }
     }
   };
 

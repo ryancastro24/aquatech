@@ -54,9 +54,34 @@ const Sales = () => {
     const fetchSalesData = async () => {
       setLoading(true);
       try {
-        // Uncomment this when ready to fetch from Supabase
+        // 1️⃣ Get the logged-in user
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("No user logged in");
 
-        const { data, error } = await supabase.from("sales").select(`
+        const userId = user.id;
+
+        // 2️⃣ Get all stores owned by this user
+        const { data: ownedStores, error: storeError } = await supabase
+          .from("stores")
+          .select("id")
+          .eq("owner_id", userId);
+
+        if (storeError) throw storeError;
+        if (!ownedStores?.length) {
+          console.warn("⚠️ No stores found for this user.");
+          setSalesData([]);
+          return;
+        }
+
+        const ownedStoreIds = ownedStores.map((s) => s.id);
+
+        // 3️⃣ Fetch sales that reference those stores (via store_branches → stores)
+        const { data, error } = await supabase.from("sales").select(
+          `
           id,
           store_id,
           total_amount,
@@ -70,13 +95,24 @@ const Sales = () => {
           store_branches:store_id (
             id,
             name,
-            address
+            address,
+            stores (
+              id
+            )
           )
-        `);
+        `
+        );
+
         if (error) throw error;
-        setSalesData(data as any);
+
+        // 4️⃣ Filter sales manually since nested .in() is not directly supported
+        const filteredSales = (data as any[]).filter((sale) =>
+          ownedStoreIds.includes(sale.store_branches?.stores?.id)
+        );
+
+        setSalesData(filteredSales);
       } catch (err) {
-        console.error("❌ Error fetching sales data:", err);
+        console.error("❌ Error fetching filtered sales:", err);
       } finally {
         setLoading(false);
       }
@@ -85,7 +121,7 @@ const Sales = () => {
     fetchSalesData();
   }, []);
 
-  // 🔹 Aggregate sales data
+  // 🔹 Aggregate daily revenue
   const dailyRevenue = salesData.reduce<Record<string, number>>((acc, sale) => {
     const date = new Date(sale.created_at).toLocaleDateString("en-PH", {
       month: "short",
@@ -125,6 +161,9 @@ const Sales = () => {
         Loading sales data...
       </div>
     );
+
+  console.log("Sales Data:", salesData);
+  console.log("Sales Data:", totalRevenue);
 
   return (
     <div className="p-6 space-y-6">

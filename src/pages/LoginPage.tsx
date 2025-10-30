@@ -14,6 +14,7 @@ import {
 } from "../components/ui/dialog";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
+import { Eye, EyeOff } from "lucide-react"; // ✅ Import icons
 import supabase from "@/backend/config";
 
 /* ✅ --- Sync User Profile Helper --- */
@@ -61,7 +62,7 @@ async function syncUserProfile() {
 
 const LoginPage = () => {
   const [showSignup, setShowSignup] = useState(false);
-  const [loading, setLoading] = useState(false); // ✅ Global loading for login & signup
+  const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<
     "google" | "facebook" | null
   >(null);
@@ -76,6 +77,11 @@ const LoginPage = () => {
     password: "",
   });
 
+  // ✅ States to toggle password visibility
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   /* --- Handle OAuth Sign-In --- */
   const handleOAuthLogin = async (provider: "google" | "facebook") => {
     try {
@@ -83,7 +89,7 @@ const LoginPage = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/dashboard/dashboard_main`, // ✅ redirect directly
+          redirectTo: `${window.location.origin}/dashboard/dashboard_main`,
         },
       });
       if (error) console.error("OAuth error:", error);
@@ -95,7 +101,6 @@ const LoginPage = () => {
   /* --- Handle Email/Password Sign In --- */
   const handleLogin = async () => {
     const { email, password } = loginData;
-
     if (!email || !password) {
       alert("Please enter your email and password");
       return;
@@ -110,13 +115,10 @@ const LoginPage = () => {
 
       if (error) {
         if (error.message.includes("Email not confirmed")) {
-          alert(
-            "Please verify your email before logging in. Check your inbox."
-          );
+          alert("Please verify your email before logging in.");
         } else {
           alert(error.message);
         }
-        console.error("Login error:", error);
         return;
       }
 
@@ -151,25 +153,20 @@ const LoginPage = () => {
       });
 
       if (error) {
-        console.error("Sign-up error:", error);
         alert(error.message);
         return;
       }
 
       if (data.user) {
-        const { error: insertError } = await supabase.from("users").insert({
+        await supabase.from("users").insert({
           auth_id: data.user.id,
           full_name,
           email,
           role: "customer",
         });
 
-        if (insertError) {
-          console.error("Error saving user:", insertError);
-        } else {
-          alert("Registration successful! Please check your email to verify.");
-          setShowSignup(false);
-        }
+        alert("Registration successful! Please verify your email.");
+        setShowSignup(false);
       }
     } finally {
       setLoading(false);
@@ -186,7 +183,6 @@ const LoginPage = () => {
         window.location.href = "/dashboard/dashboard_main";
       }
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -195,17 +191,15 @@ const LoginPage = () => {
       className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat relative"
       style={{ backgroundImage: `url(${aquatec_bg})` }}
     >
-      {/* Optional overlay for readability */}
       <div className="absolute inset-0 "></div>
 
-      {/* Content Card */}
       <Card className="w-[380px] shadow-lg relative z-10 bg-white/95 backdrop-blur-sm">
         <CardHeader className="flex items-center justify-center">
           <img src={logo} alt="aquatech logo" className="w-44" />
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Email / Password Login */}
+          {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -219,17 +213,27 @@ const LoginPage = () => {
             />
           </div>
 
-          <div className="space-y-2">
+          {/* ✅ Password with toggle */}
+          <div className="space-y-2 relative">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={loginData.password}
-              onChange={(e) =>
-                setLoginData({ ...loginData, password: e.target.value })
-              }
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showLoginPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={loginData.password}
+                onChange={(e) =>
+                  setLoginData({ ...loginData, password: e.target.value })
+                }
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowLoginPassword((prev) => !prev)}
+              >
+                {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <Button className="w-full" onClick={handleLogin} disabled={loading}>
@@ -316,21 +320,32 @@ const LoginPage = () => {
                 placeholder="you@example.com"
               />
             </div>
-            <div>
+
+            {/* ✅ Signup Password with toggle */}
+            <div className="relative">
               <Label>Password</Label>
               <Input
-                type="password"
+                type={showSignupPassword ? "text" : "password"}
                 value={signupData.password}
                 onChange={(e) =>
                   setSignupData({ ...signupData, password: e.target.value })
                 }
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                className="absolute right-3 top-8 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowSignupPassword((prev) => !prev)}
+              >
+                {showSignupPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-            <div>
+
+            {/* ✅ Confirm Password with toggle */}
+            <div className="relative">
               <Label>Confirm Password</Label>
               <Input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 value={signupData.confirmPassword}
                 onChange={(e) =>
                   setSignupData({
@@ -340,6 +355,13 @@ const LoginPage = () => {
                 }
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                className="absolute right-3 top-8 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
