@@ -13,7 +13,6 @@ import {
   DialogFooter,
 } from "../components/ui/dialog";
 import { FcGoogle } from "react-icons/fc";
-import { FaFacebook } from "react-icons/fa";
 import { Eye, EyeOff } from "lucide-react"; // ✅ Import icons
 import supabase from "@/backend/config";
 
@@ -258,22 +257,6 @@ const LoginPage = () => {
               ) : (
                 <>
                   <FcGoogle size={20} /> Continue with Google
-                </>
-              )}
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full flex items-center gap-2"
-              onClick={() => handleOAuthLogin("facebook")}
-              disabled={oauthLoading === "facebook" || loading}
-            >
-              {oauthLoading === "facebook" ? (
-                <span>Connecting to Facebook...</span>
-              ) : (
-                <>
-                  <FaFacebook size={20} className="text-blue-600" /> Continue
-                  with Facebook
                 </>
               )}
             </Button>
