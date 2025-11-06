@@ -65,6 +65,7 @@ const AdsManagement = () => {
   });
   const [uploading, setUploading] = useState(false);
 
+  console.log("formData:", formData);
   // Fetch all ads
   const fetchAds = async () => {
     const { data, error } = await supabase
@@ -128,12 +129,18 @@ const AdsManagement = () => {
       return;
     }
 
+    // Remove store_branches before sending to supabase
+    const { store_branches, ...cleanData } = formData;
+
+    console.log("Submitting formData:", cleanData);
+
     if (editingAd) {
       // Update
       const { error } = await supabase
         .from("ads")
-        .update(formData)
+        .update(cleanData)
         .eq("id", editingAd.id);
+
       if (error) {
         toast.error("Failed to update ad");
         return;
@@ -141,7 +148,7 @@ const AdsManagement = () => {
       toast.success("Ad updated successfully!");
     } else {
       // Create
-      const { error } = await supabase.from("ads").insert([formData]);
+      const { error } = await supabase.from("ads").insert([cleanData]);
       if (error) {
         toast.error("Failed to create ad");
         return;
@@ -160,6 +167,7 @@ const AdsManagement = () => {
       store_id: "",
       cover_image: "",
     });
+
     fetchAds();
   };
 
