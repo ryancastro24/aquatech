@@ -3,6 +3,19 @@ import { FiPhone } from "react-icons/fi";
 import { AiOutlineHome } from "react-icons/ai";
 import supabase from "@/backend/config";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  AlertDialogDescription,
+} from "@/components/ui/alert-dialog";
+
+import { FaStoreSlash } from "react-icons/fa";
+import {
   Card,
   CardHeader,
   CardTitle,
@@ -20,7 +33,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
-// Leaflet imports
 import {
   MapContainer,
   TileLayer,
@@ -51,6 +63,7 @@ interface Store {
   latitude?: string;
   longitude?: string;
   created_at?: string;
+  is_closed?: boolean; // ✅ added
 }
 
 interface Branch {
@@ -62,7 +75,8 @@ interface Branch {
   latitude?: string;
   longitude?: string;
   created_at?: string;
-  store_image?: string; // ✅ added
+  store_image?: string;
+  is_closed?: boolean; // ✅ added
 }
 
 interface BranchData {
@@ -71,10 +85,10 @@ interface BranchData {
   contact_number: string;
   latitude: string;
   longitude: string;
-  storeImageFile?: File | null; // ✅ added
+  storeImageFile?: File | null;
 }
 
-const DEFAULT_LAT = 8.9475; // Butuan default
+const DEFAULT_LAT = 8.9475;
 const DEFAULT_LNG = 125.5406;
 
 const MyStorePage: React.FC = () => {
@@ -87,18 +101,11 @@ const MyStorePage: React.FC = () => {
   const [showBranchesDialog, setShowBranchesDialog] = useState(false);
   const [showAddBranchDialog, setShowAddBranchDialog] = useState(false);
 
-  const [formData, setFormData] = useState<{
-    name: string;
-    address: string;
-    contact_number: string;
-    logoFile: File | null;
-    latitude: string;
-    longitude: string;
-  }>({
+  const [formData, setFormData] = useState({
     name: "",
     address: "",
     contact_number: "",
-    logoFile: null,
+    logoFile: null as File | null,
     latitude: "",
     longitude: "",
   });
@@ -109,13 +116,13 @@ const MyStorePage: React.FC = () => {
     contact_number: "",
     latitude: "",
     longitude: "",
-    storeImageFile: null, // ✅ added
+    storeImageFile: null,
   });
 
   const [preview, setPreview] = useState<string | null>(null);
   const [branchImagePreview, setBranchImagePreview] = useState<string | null>(
     null
-  ); // ✅ added
+  );
   const [userId, setUserId] = useState<string | null>(null);
 
   // --- Get logged-in user ---
@@ -151,6 +158,7 @@ const MyStorePage: React.FC = () => {
     setStores(data as Store[]);
   };
 
+  console.log("Stores:", stores);
   useEffect(() => {
     if (userId) fetchStores();
   }, [userId]);
@@ -233,6 +241,7 @@ const MyStorePage: React.FC = () => {
         address,
         contact_number,
         logo_url,
+        is_closed: false, // ✅ default open
       })
       .select()
       .single();
@@ -274,6 +283,7 @@ const MyStorePage: React.FC = () => {
   };
 
   const openBranchesDialog = (store: Store) => {
+    if (store.is_closed) return; // 🚫 prevent opening closed store
     setSelectedStore(store);
     setShowBranchesDialog(true);
     fetchBranches(store.id);
@@ -314,7 +324,8 @@ const MyStorePage: React.FC = () => {
       contact_number,
       latitude,
       longitude,
-      store_image: store_image_url, // ✅ added
+      store_image: store_image_url,
+      is_closed: false, // ✅ default open
     });
 
     if (error) {
@@ -357,9 +368,66 @@ const MyStorePage: React.FC = () => {
     );
   };
 
+  // ✅ --- Close / Open Store ---
+  const toggleStoreStatus = async (store: Store) => {
+    const newStatus = !store.is_closed;
+    const { error: storeError } = await supabase
+      .from("stores")
+      .update({ is_closed: newStatus })
+      .eq("id", store.id);
+
+    if (storeError) {
+      console.error("Error updating store status:", storeError);
+      alert("Failed to update store status.");
+      return;
+    }
+
+    // Update all branches too
+    const { error: branchError } = await supabase
+      .from("store_branches")
+      .update({ is_closed: newStatus })
+      .eq("store_id", store.id);
+
+    if (branchError) {
+      console.error("Error updating branch status:", branchError);
+    }
+
+    alert(
+      newStatus
+        ? "Store and all branches closed successfully."
+        : "Store and branches reopened successfully."
+    );
+
+    fetchStores();
+  };
+
   const filteredStores = stores.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const toggleBranchStatus = async (branch: Branch) => {
+    const newStatus = !branch.is_closed;
+
+    const { error } = await supabase
+      .from("store_branches")
+      .update({ is_closed: newStatus })
+      .eq("id", branch.id);
+
+    if (error) {
+      console.error("Error updating branch status:", error);
+      alert("Failed to update branch status.");
+      return;
+    }
+
+    alert(
+      newStatus
+        ? "Branch closed successfully."
+        : "Branch reopened successfully."
+    );
+
+    // Refresh branches for that store
+    if (selectedStore) await openBranchesDialog(selectedStore);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -397,7 +465,12 @@ const MyStorePage: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col item-center">
-                  <h2 className="text-lg mt-2 font-bold">{store.name}</h2>
+                  <h2 className="text-lg mt-2 font-bold">
+                    {store.name}{" "}
+                    {store.is_closed && (
+                      <span className="text-red-500 text-xs">(Closed)</span>
+                    )}
+                  </h2>
                   <p className="text-xs flex items-center gap-1">
                     <AiOutlineHome />
                     {store.address}
@@ -414,13 +487,50 @@ const MyStorePage: React.FC = () => {
                 </div>
               </CardContent>
 
-              <CardFooter>
+              <CardFooter className="flex gap-2 justify-between items-center">
                 <Button
-                  className="w-full mt-3"
+                  disabled={store.is_closed}
                   onClick={() => openBranchesDialog(store)}
                 >
                   View Branches
                 </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger>
+                    <Button
+                      size="icon"
+                      variant={store.is_closed ? "default" : "destructive"}
+                    >
+                      <FaStoreSlash />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Are you sure to close this store?
+                      </AlertDialogTitle>
+
+                      <AlertDialogDescription>
+                        Warning: This action will also close all branches under
+                        this store.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className={`${
+                          store.is_closed
+                            ? "bg-blue-500 hover:bg-blue-700"
+                            : "bg-red-500 hover:bg-red-700"
+                        } cursor-pointer`}
+                        onClick={() => toggleStoreStatus(store)}
+                      >
+                        {" "}
+                        {store.is_closed ? "Reopen" : "Close"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardFooter>
             </Card>
           ))
@@ -558,14 +668,47 @@ const MyStorePage: React.FC = () => {
                     </p>
                   </CardContent>
 
-                  <CardFooter>
+                  <CardFooter className="flex justify-between">
                     <Button
+                      disabled={b.is_closed}
                       onClick={() =>
                         navigate(`/dashboard/storebranches/${b.id}`)
                       }
                     >
                       Manage Branch
                     </Button>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger>
+                        <Button
+                          size="icon"
+                          variant={b.is_closed ? "default" : "destructive"}
+                        >
+                          <FaStoreSlash />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Are you sure to close this branch?
+                          </AlertDialogTitle>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className={`${
+                              b.is_closed
+                                ? "bg-blue-500 hover:bg-blue-700"
+                                : "bg-red-500 hover:bg-red-700"
+                            } cursor-pointer`}
+                            onClick={() => toggleBranchStatus(b)}
+                          >
+                            {" "}
+                            {b.is_closed ? "Reopen" : "Close"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </CardFooter>
                 </Card>
               ))

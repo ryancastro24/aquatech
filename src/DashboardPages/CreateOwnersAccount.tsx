@@ -33,10 +33,16 @@ const CreateOwnersAccount = () => {
   const [owners, setOwners] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedOwner, setSelectedOwner] = useState<any>(null);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     password: "",
+  });
+  const [editFormData, setEditFormData] = useState({
+    full_name: "",
+    email: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -57,7 +63,6 @@ const CreateOwnersAccount = () => {
   }, []);
 
   // --- HANDLE ADD NEW OWNER ---
-  // --- HANDLE ADD NEW OWNER ---
   const handleAddOwner = async () => {
     const { full_name, email, password } = formData;
     if (!full_name || !email || !password) {
@@ -73,7 +78,7 @@ const CreateOwnersAccount = () => {
         email,
         password,
         options: {
-          data: { full_name, role: "business_owner" }, // 👈 important
+          data: { full_name, role: "business_owner" },
         },
       });
       if (authError) throw authError;
@@ -121,21 +126,41 @@ const CreateOwnersAccount = () => {
     }
   };
 
-  // --- HANDLE UPDATE OWNER ---
-  const handleUpdateOwner = async (owner: any) => {
-    const newName = prompt("Enter new full name:", owner.full_name);
-    if (!newName || newName === owner.full_name) return;
+  // --- OPEN EDIT DIALOG ---
+  const openEditDialog = (owner: any) => {
+    setSelectedOwner(owner);
+    setEditFormData({
+      full_name: owner.full_name,
+      email: owner.email,
+    });
+    setShowEditDialog(true);
+  };
 
+  // --- HANDLE UPDATE OWNER ---
+  const handleUpdateOwner = async () => {
+    if (!selectedOwner) return;
+
+    const { full_name, email } = editFormData;
+    if (!full_name || !email) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    setLoading(true);
     const { error } = await supabase
       .from("users")
-      .update({ full_name: newName })
-      .eq("id", owner.id);
+      .update({ full_name, email })
+      .eq("id", selectedOwner.id);
 
-    if (error) alert("Update failed!");
-    else {
-      alert("Owner updated!");
+    if (error) {
+      alert("Update failed!");
+      console.error(error);
+    } else {
+      alert("✅ Owner updated successfully!");
+      setShowEditDialog(false);
       fetchOwners();
     }
+    setLoading(false);
   };
 
   // --- HANDLE DELETE OWNER ---
@@ -209,7 +234,7 @@ const CreateOwnersAccount = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => handleUpdateOwner(owner)}
+                            onClick={() => openEditDialog(owner)}
                           >
                             Edit
                           </DropdownMenuItem>
@@ -282,6 +307,56 @@ const CreateOwnersAccount = () => {
             </Button>
             <Button onClick={handleAddOwner} disabled={loading}>
               {loading ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- EDIT OWNER DIALOG --- */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Edit Business Owner</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div>
+              <Label>Full Name</Label>
+              <Input
+                value={editFormData.full_name}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    full_name: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={editFormData.email}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    email: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditDialog(false)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateOwner} disabled={loading}>
+              {loading ? "Updating..." : "Update"}
             </Button>
           </DialogFooter>
         </DialogContent>
