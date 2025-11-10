@@ -297,43 +297,31 @@ const StoreBranch = () => {
 
     const authId = authData.user?.id;
 
-    // Step 2️⃣ - Check if user already exists in public.users
-    const { data: existingUser } = await supabase
+    // Step 2️⃣ - Upsert user into public.users (ensures role is correct)
+    const { data: upsertedUser, error: upsertError } = await supabase
       .from("users")
-      .select("id, auth_id")
-      .eq("email", email)
-      .single();
-
-    let insertedUser;
-
-    // Step 3️⃣ - Insert if not existing
-    if (!existingUser) {
-      const { data, error: insertError } = await supabase
-        .from("users")
-        .insert({
+      .upsert(
+        {
           auth_id: authId,
           full_name,
           email,
-          role: "delivery",
-        })
-        .select()
-        .single();
+          role: "delivery", // ✅ force correct role
+        },
+        { onConflict: "auth_id" }
+      )
+      .select()
+      .single();
 
-      if (insertError) {
-        console.error(insertError);
-        alert("Failed to save user in public.users");
-        return;
-      }
-
-      insertedUser = data;
-    } else {
-      insertedUser = existingUser;
+    if (upsertError) {
+      console.error(upsertError);
+      alert("Failed to save user in public.users");
+      return;
     }
 
-    // Step 4️⃣ - Add to delivery_team table
+    // Step 3️⃣ - Add to delivery_team table
     const { error: teamError } = await supabase.from("delivery_team").insert({
       store_id: branchId,
-      user_id: insertedUser.auth_id,
+      user_id: upsertedUser.auth_id,
       role,
     });
 

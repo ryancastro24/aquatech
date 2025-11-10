@@ -94,14 +94,25 @@ const Stores = () => {
   useEffect(() => {
     const fetchBranches = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from("store_branches").select(`
-        *,
-        stores ( name )
-      `);
-      if (error) console.error("Error fetching branches:", error);
-      else setBranches(data);
+      const { data, error } = await supabase
+        .from("store_branches")
+        .select(
+          `
+      *,
+      stores ( name )
+    `
+        )
+        .eq("is_closed", false); // ✅ only get open branches
+
+      if (error) {
+        console.error("Error fetching branches:", error);
+      } else {
+        setBranches(data);
+      }
+
       setLoading(false);
     };
+
     fetchBranches();
   }, []);
 
