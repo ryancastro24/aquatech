@@ -64,8 +64,10 @@ interface Order {
 
 interface DeliveryAgent {
   id: string;
-  full_name: string;
-  email: string;
+  users: {
+    full_name: string;
+    email: string;
+  };
   created_at: string;
 }
 
@@ -170,14 +172,30 @@ const StoreBranch = () => {
 
   // ✅ Fetch delivery agents
   const fetchAgents = async () => {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("role", "delivery")
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("delivery_team")
+        .select(
+          `
+        *,
+        users (
+          full_name,
+          email,
+          created_at
+        )
+      `
+        )
+        .eq("store_id", branchId)
+        .order("created_at", { ascending: false });
 
-    if (error) console.error("Fetch agents error:", error);
-    else setAgents(data as DeliveryAgent[]);
+      if (error) throw error;
+
+      setAgents(data as DeliveryAgent[]);
+
+      console.log(data);
+    } catch (error) {
+      console.error("Fetch agents error:", error);
+    }
   };
 
   useEffect(() => {
@@ -543,17 +561,17 @@ const StoreBranch = () => {
                       {agents
                         .filter(
                           (a) =>
-                            a.full_name
+                            a.users?.full_name
                               ?.toLowerCase()
                               .includes(search.toLowerCase()) ||
-                            a.email
+                            a.users?.email
                               ?.toLowerCase()
                               .includes(search.toLowerCase())
                         )
                         .map((agent) => (
                           <TableRow key={agent.id}>
-                            <TableCell>{agent.full_name}</TableCell>
-                            <TableCell>{agent.email}</TableCell>
+                            <TableCell>{agent.users?.full_name}</TableCell>
+                            <TableCell>{agent.users?.email}</TableCell>
                             <TableCell>
                               {new Date(agent.created_at).toLocaleDateString()}
                             </TableCell>

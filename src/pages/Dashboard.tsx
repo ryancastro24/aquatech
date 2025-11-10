@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, User } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import supabase from "@/backend/config";
 import LoadingUI from "@/components/LoadingUI";
 import logo from "@/assets/aquatech_logo.png";
@@ -162,12 +162,7 @@ const Dashboard = () => {
                 {userFullName}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => navigate("/dashboard/manage_account")}
-                className="cursor-pointer"
-              >
-                <User className="w-4 h-4 mr-2" /> Manage Account
-              </DropdownMenuItem>
+
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleLogout}

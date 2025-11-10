@@ -2,6 +2,7 @@
 import { useLoaderData, useNavigate } from "react-router-dom";
 import type { LoaderFunctionArgs } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { FaStoreSlash } from "react-icons/fa";
 import {
   Card,
   CardContent,
@@ -75,7 +76,7 @@ const StoreDetails: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
   const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
-
+  const [storeDetails, setStoreDetails] = useState<any>(null);
   // ✅ Get authenticated user
   useEffect(() => {
     const getUser = async () => {
@@ -106,7 +107,17 @@ const StoreDetails: React.FC = () => {
       setLoading(false);
     };
 
+    const fetchStoreDetails = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("store_branches")
+        .select("*")
+        .eq("id", storeId);
+      setStoreDetails(data ? data[0] : null);
+    };
+
     if (storeId) fetchInventory();
+    fetchStoreDetails();
   }, [storeId]);
 
   // ✅ Select/deselect items
@@ -237,6 +248,27 @@ const StoreDetails: React.FC = () => {
       alert("Something went wrong while submitting your order.");
     }
   };
+
+  if (storeDetails?.is_closed) {
+    return (
+      <div className="p-4 space-y-4 font-[Poppins] flex items-center justify-center h-full w-full">
+        <div className="flex flex-col items-center justify-center  mt-20">
+          <FaStoreSlash color="red" size={50} />
+
+          <h2 className="text-4xl mt-10 text-red-500 font-bold">
+            Sorry this store is closed for the moment
+          </h2>
+
+          <Button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 cursor-pointer mt-10"
+          >
+            <IoReturnUpBack /> return
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-4 font-[Poppins]">
