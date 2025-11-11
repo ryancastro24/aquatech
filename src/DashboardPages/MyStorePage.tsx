@@ -539,7 +539,7 @@ const MyStorePage: React.FC = () => {
 
       {/* Add store dialog */}
       <Dialog open={showAddStore} onOpenChange={setShowAddStore}>
-        <DialogContent className="sm:max-w-[900px]">
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Store</DialogTitle>
           </DialogHeader>
@@ -719,112 +719,97 @@ const MyStorePage: React.FC = () => {
 
       {/* Add branch dialog */}
       <Dialog open={showAddBranchDialog} onOpenChange={setShowAddBranchDialog}>
-        <DialogContent className="w-[1000px]">
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Branch</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2">
-                  <Label>Branch Name</Label>
-                  <Input
-                    value={branchData.name}
-                    onChange={(e) =>
-                      setBranchData({ ...branchData, name: e.target.value })
-                    }
-                  />
-                </div>
 
-                <div className="flex flex-col gap-2">
-                  <Label>Address</Label>
-                  <Input
-                    value={branchData.address}
-                    onChange={(e) =>
-                      setBranchData({
-                        ...branchData,
-                        address: e.target.value,
-                      })
-                    }
-                  />
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-2">
+            {/* LEFT SIDE FORM */}
+            <div className="space-y-3">
+              <Label>Branch Name</Label>
+              <Input
+                value={branchData.name}
+                onChange={(e) =>
+                  setBranchData({ ...branchData, name: e.target.value })
+                }
+              />
 
-                <div className="flex flex-col gap-2">
-                  <Label>Contact Number</Label>
-                  <Input
-                    value={branchData.contact_number}
-                    onChange={(e) =>
-                      setBranchData({
-                        ...branchData,
-                        contact_number: e.target.value,
-                      })
-                    }
-                  />
-                </div>
+              <Label>Address</Label>
+              <Input
+                value={branchData.address}
+                onChange={(e) =>
+                  setBranchData({ ...branchData, address: e.target.value })
+                }
+              />
 
-                {/* ✅ NEW: Branch Image Upload */}
-                <div className="flex flex-col gap-2">
-                  <Label>Branch Image</Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] ?? null;
-                      setBranchData({ ...branchData, storeImageFile: file });
-                      setBranchImagePreview(
-                        file ? URL.createObjectURL(file) : null
-                      );
-                    }}
-                  />
-                  {branchImagePreview && (
-                    <img
-                      src={branchImagePreview}
-                      alt="Branch Preview"
-                      className="w-32 h-32 object-cover rounded-md border"
-                    />
-                  )}
-                </div>
+              <Label>Contact Number</Label>
+              <Input
+                value={branchData.contact_number}
+                onChange={(e) =>
+                  setBranchData({
+                    ...branchData,
+                    contact_number: e.target.value,
+                  })
+                }
+              />
 
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2 ">
-                    <Button
-                      variant="outline"
-                      onClick={() => getDeviceLocation(setBranchData)}
-                    >
-                      Use Device Location
-                    </Button>
-                  </div>
-                </div>
+              <Label>Branch Image</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setBranchData({ ...branchData, storeImageFile: file });
+                  setBranchImagePreview(
+                    file ? URL.createObjectURL(file) : null
+                  );
+                }}
+              />
+              {branchImagePreview && (
+                <img
+                  src={branchImagePreview}
+                  alt="Branch Preview"
+                  className="w-32 h-32 object-cover rounded-md border"
+                />
+              )}
 
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Latitude"
-                    value={branchData.latitude}
-                    onChange={(e) =>
-                      setBranchData({ ...branchData, latitude: e.target.value })
-                    }
-                  />
-                  <Input
-                    placeholder="Longitude"
-                    value={branchData.longitude}
-                    onChange={(e) =>
-                      setBranchData({
-                        ...branchData,
-                        longitude: e.target.value,
-                      })
-                    }
-                  />
-                </div>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => getDeviceLocation(setBranchData)}
+                >
+                  Use Device Location
+                </Button>
               </div>
 
-              <div>
-                <LeafletMapPicker
-                  branchData={branchData}
-                  setBranchData={setBranchData}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Latitude"
+                  value={branchData.latitude}
+                  onChange={(e) =>
+                    setBranchData({ ...branchData, latitude: e.target.value })
+                  }
+                />
+                <Input
+                  placeholder="Longitude"
+                  value={branchData.longitude}
+                  onChange={(e) =>
+                    setBranchData({ ...branchData, longitude: e.target.value })
+                  }
                 />
               </div>
             </div>
+
+            {/* RIGHT SIDE MAP PICKER */}
+            <div>
+              <LeafletMapPicker
+                branchData={branchData}
+                setBranchData={setBranchData}
+              />
+            </div>
           </div>
+
           <DialogFooter>
             <Button
               variant="outline"

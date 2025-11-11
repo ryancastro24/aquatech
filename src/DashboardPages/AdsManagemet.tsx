@@ -268,7 +268,7 @@ const AdsManagement = () => {
 
       {/* ADD/EDIT DIALOG */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="w-[800px]">
+        <DialogContent className="w-full max-w-[800px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>{editingAd ? "Edit Ad" : "Add New Ad"}</DialogTitle>
             <DialogDescription>
@@ -276,8 +276,9 @@ const AdsManagement = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-3">
-            <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Store Selector */}
+            <div className="flex flex-col gap-2 md:col-span-2">
               <Label>Store</Label>
               <Select
                 onValueChange={(value) =>
@@ -298,53 +299,50 @@ const AdsManagement = () => {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-2">
-                <Label>Promo 1</Label>
-                <Input
-                  value={formData.promo1}
-                  onChange={(e) =>
-                    setFormData({ ...formData, promo1: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label>Promo 2</Label>
-                <Input
-                  value={formData.promo2}
-                  onChange={(e) =>
-                    setFormData({ ...formData, promo2: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-2">
-                <Label>Prize</Label>
-                <Input
-                  type="number"
-                  value={formData.prize}
-                  onChange={(e) =>
-                    setFormData({ ...formData, prize: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label>Expiry Date</Label>
-                <Input
-                  type="date"
-                  value={formData.expiry_date || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, expiry_date: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
+            {/* Promo Fields */}
             <div className="flex flex-col gap-2">
+              <Label>Promo 1</Label>
+              <Input
+                value={formData.promo1}
+                onChange={(e) =>
+                  setFormData({ ...formData, promo1: e.target.value })
+                }
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Promo 2</Label>
+              <Input
+                value={formData.promo2}
+                onChange={(e) =>
+                  setFormData({ ...formData, promo2: e.target.value })
+                }
+              />
+            </div>
+
+            {/* Prize & Expiry Date */}
+            <div className="flex flex-col gap-2">
+              <Label>Prize</Label>
+              <Input
+                type="number"
+                value={formData.prize}
+                onChange={(e) =>
+                  setFormData({ ...formData, prize: e.target.value })
+                }
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Expiry Date</Label>
+              <Input
+                type="date"
+                value={formData.expiry_date || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, expiry_date: e.target.value })
+                }
+              />
+            </div>
+
+            {/* Cover Image */}
+            <div className="flex flex-col gap-2 md:col-span-2">
               <Label>Cover Image</Label>
               <Input
                 type="file"
@@ -355,7 +353,7 @@ const AdsManagement = () => {
                 <img
                   src={formData.cover_image}
                   alt="preview"
-                  className="w-24 h-24 object-cover rounded-md mt-2"
+                  className="w-32 h-32 object-cover rounded-md mt-2"
                 />
               )}
             </div>
