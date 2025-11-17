@@ -52,10 +52,14 @@ const CreateOwnersAccount = () => {
       .from("users")
       .select("*")
       .eq("role", "business_owner")
+      .eq("is_banned", false) // ✅ Only return NOT banned
       .order("created_at", { ascending: false });
 
-    if (error) console.error("Fetch error:", error);
-    else setOwners(data || []);
+    if (error) {
+      console.error("Fetch error:", error);
+    } else {
+      setOwners(data || []);
+    }
   };
 
   useEffect(() => {
@@ -167,13 +171,58 @@ const CreateOwnersAccount = () => {
   const handleDeleteOwner = async (owner: any) => {
     if (!confirm(`Remove ${owner.full_name}?`)) return;
 
-    const { error } = await supabase.from("users").delete().eq("id", owner.id);
+    const { error: deleteError } = await supabase
+      .from("users")
+      .update({ is_banned: true })
+      .eq("id", owner.id);
 
-    if (error) alert("Delete failed!");
-    else {
-      alert("Owner removed!");
-      fetchOwners();
+    if (deleteError) {
+      alert("Delete failed!");
+      return;
     }
+
+    // 2. Get all stores owned by the deleted owner
+    const { data: stores, error: storeFetchError } = await supabase
+      .from("stores")
+      .select("id")
+      .eq("owner_id", owner.auth_id);
+
+    if (storeFetchError) {
+      alert("Failed to fetch stores for owner.");
+      return;
+    }
+
+    // 3. Close all stores
+    const { error: storeCloseError } = await supabase
+      .from("stores")
+      .update({ is_closed: true })
+      .eq("owner_id", owner.auth_id);
+
+    if (storeCloseError) {
+      alert("Failed to mark stores as closed.");
+      return;
+    }
+
+    console.log(stores.length);
+    // 4. Close all branches for each store
+    if (stores.length > 0) {
+      const storeIds = stores.map((s: any) => s.id);
+
+      console.log("store ids", storeIds);
+
+      const { error: branchCloseError } = await supabase
+        .from("store_branches")
+        .update({ is_closed: true })
+        .in("store_id", storeIds);
+
+      if (branchCloseError) {
+        alert("Failed to close store branches.");
+        return;
+      }
+    }
+
+    alert("Owner removed and all related stores and branches closed.");
+    fetchOwners();
   };
 
   // --- FILTER OWNERS ---

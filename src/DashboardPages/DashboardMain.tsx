@@ -89,31 +89,40 @@ const DashboardMain = () => {
     const fetchData = async () => {
       setLoading(true);
 
-      // 🏪 Fetch all sales with their store info
       const { data: storeData, error: storeError } = await supabase
         .from("sales")
         .select(
           `
-          id,
-          store_id,
-          store_branches (
-            id,
-            name,
-            store_image,
-            address
-          )
-        `
-        );
+      id,
+      store_id,
+      store_branches!inner (
+        id,
+        name,
+        store_image,
+        address,
+        is_closed
+      )
+    `
+        )
+        .eq("store_branches.is_closed", false); // filter open branches only
 
+      console.log(storeData);
       if (storeError) {
         console.error("Error fetching stores:", storeError);
       } else {
         const storeCountMap = new Map();
+
         storeData?.forEach((sale: any) => {
-          const id = sale.store_branches?.id || sale.store_id;
-          const name = sale.store_branches?.name || "Unknown Store";
-          const store_image = sale.store_branches?.store_image || "";
-          const address = sale.store_branches?.address || "";
+          const branch = sale.store_branches;
+
+          // skip closed branches (double safety)
+          if (branch?.is_closed) return;
+
+          const id = branch?.id || sale.store_id;
+          const name = branch?.name || "Unknown Store";
+          const store_image = branch?.store_image || "";
+          const address = branch?.address || "";
+
           if (!storeCountMap.has(id)) {
             storeCountMap.set(id, { id, name, count: 1, store_image, address });
           } else {
@@ -128,31 +137,31 @@ const DashboardMain = () => {
         setTopStores(topStoresList);
       }
 
-      // 🛒 Fetch top 3 items
+      // 🛒 Fetch top 3 best-selling items
       const { data: orderData, error: orderError } = await supabase
         .from("order_items")
         .select(
           `
+        id,
+        quantity,
+        inventory (
           id,
-          quantity,
-          inventory (
-            id,
-            item_name,
-            price,
-            image
-          ),
-          orders(branch_id)
-        `
+          item_name,
+          price,
+          image
+        ),
+        orders(branch_id)
+      `
         )
         .order("quantity", { ascending: false })
         .limit(3);
 
       setTopItems(orderData || []);
 
-      // 📦 Fetch all items from inventory (for “All Items” section)
+      // 📦 Fetch all items from inventory
       const { data: inventoryData, error: inventoryError } = await supabase
         .from("inventory")
-        .select("id, item_name, price, description,store_id,image");
+        .select("id, item_name, price, description, store_id, image");
 
       if (inventoryError) {
         console.error("Error fetching inventory:", inventoryError);
