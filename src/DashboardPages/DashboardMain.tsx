@@ -137,31 +137,55 @@ const DashboardMain = () => {
         setTopStores(topStoresList);
       }
 
-      // 🛒 Fetch top 3 best-selling items
       const { data: orderData, error: orderError } = await supabase
         .from("order_items")
         .select(
           `
+    id,
+    quantity,
+    inventory (
+      id,
+      item_name,
+      price,
+      image
+    ),
+    orders!inner (
+      branch_id,
+      store_branches!inner (
         id,
-        quantity,
-        inventory (
-          id,
-          item_name,
-          price,
-          image
-        ),
-        orders(branch_id)
-      `
+        is_closed
+      )
+    )
+  `
         )
+        .eq("orders.store_branches.is_closed", false)
         .order("quantity", { ascending: false })
         .limit(3);
+
+      console.log("order data fetch", orderData);
+
+      if (orderError) console.error("Fetch error:", orderError);
+      else console.log("order data test", orderData);
 
       setTopItems(orderData || []);
 
       // 📦 Fetch all items from inventory
       const { data: inventoryData, error: inventoryError } = await supabase
         .from("inventory")
-        .select("id, item_name, price, description, store_id, image");
+        .select(
+          `
+    id,
+    item_name,
+    price,
+    description,
+    store_id,
+    image,
+    store_branches!inner (
+      is_closed
+    )
+  `
+        )
+        .eq("store_branches.is_closed", false);
 
       if (inventoryError) {
         console.error("Error fetching inventory:", inventoryError);
