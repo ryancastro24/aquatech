@@ -60,6 +60,7 @@ interface Order {
   created_at: string;
   users?: { email: string };
   order_items?: OrderItem[];
+  is_confirmed?: boolean;
 }
 
 interface DeliveryAgent {
@@ -256,7 +257,8 @@ const StoreBranch = () => {
 
   useEffect(() => {
     if (deliveryDialogOpen) fetchAgents();
-  }, [deliveryDialogOpen]);
+    if (staffDialogOpen) fetchStaffs();
+  }, [deliveryDialogOpen, staffDialogOpen]);
 
   // ✅ Add new item
   const addItem = async () => {
@@ -459,6 +461,25 @@ const StoreBranch = () => {
       setShowAddStaffDialog(false);
       setNewStaff({ full_name: "", email: "", password: "", role: "staff" });
       fetchStaffs();
+    }
+  };
+
+  // confirm orders
+
+  const confirmOrder = async (orderId: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ is_confirmed: true })
+      .eq("id", orderId);
+
+    if (error) alert("Failed to confirm order");
+    else {
+      alert("Order confirmed successfully!");
+      setOrders((prev: any) =>
+        prev.map((o: any) =>
+          o.id === orderId ? { ...o, is_confirmed: true } : o
+        )
+      );
     }
   };
 
@@ -694,7 +715,7 @@ const StoreBranch = () => {
               >
                 <DialogContent className="sm:max-w-[400px]">
                   <DialogHeader>
-                    <DialogTitle>Add Delivery Agent</DialogTitle>
+                    <DialogTitle>Add new staff</DialogTitle>
                   </DialogHeader>
 
                   <div className="space-y-3 py-2">
@@ -915,6 +936,7 @@ const StoreBranch = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -935,6 +957,17 @@ const StoreBranch = () => {
                   </TableCell>
                   <TableCell>
                     {new Date(order.created_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    {!order.is_confirmed ? (
+                      <Button size="sm" onClick={() => confirmOrder(order.id)}>
+                        Confirm
+                      </Button>
+                    ) : (
+                      <span className="text-green-600 font-semibold">
+                        Confirmed
+                      </span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
