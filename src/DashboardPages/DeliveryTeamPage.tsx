@@ -116,11 +116,15 @@ const DeliveryTeamPage = () => {
     if (!branchId) return;
     const fetchOrders = async () => {
       setLoading(true);
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("orders")
-        .select("*,users(*)")
+        .select("*, users(*)")
         .eq("branch_id", branchId)
+        .eq("is_confirmed", true) // ✅ filter confirmed orders
         .order("created_at", { ascending: false });
+
+      if (error) console.error("Error fetching orders:", error);
+
       if (data) setOrders(data);
       setLoading(false);
     };

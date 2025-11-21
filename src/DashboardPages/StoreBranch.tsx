@@ -71,6 +71,15 @@ interface DeliveryAgent {
   created_at: string;
 }
 
+interface StaffMember {
+  id: string;
+  users: {
+    full_name: string;
+    email: string;
+  };
+  created_at: string;
+}
+
 const StoreBranch = () => {
   const { branchId } = useParams<{ branchId: string }>();
 
@@ -100,6 +109,18 @@ const StoreBranch = () => {
     password: "",
     role: "driver",
   });
+
+  const [newStaff, setNewStaff] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    role: "staff",
+  });
+
+  const [staffs, setStaffs] = useState<StaffMember[]>([]);
+
+  const [showAddStaffDialog, setShowAddStaffDialog] = useState(false);
+  const [staffDialogOpen, setStaffDialogOpen] = useState(false);
 
   // ✅ Upload helper
   const uploadImage = async (file: File) => {
@@ -171,6 +192,33 @@ const StoreBranch = () => {
   };
 
   // ✅ Fetch delivery agents
+  const fetchStaffs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("staffs")
+        .select(
+          `
+        *,
+        users (
+          full_name,
+          email,
+          created_at
+        )
+      `
+        )
+        .eq("store_id", branchId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setStaffs(data as StaffMember[]);
+
+      console.log(data);
+    } catch (error) {
+      console.error("Fetch agents error:", error);
+    }
+  };
+
   const fetchAgents = async () => {
     try {
       const { data, error } = await supabase
@@ -354,6 +402,66 @@ const StoreBranch = () => {
     }
   };
 
+  const handleAddStaff = async () => {
+    const { full_name, email, password } = newStaff;
+    if (!full_name || !email || !password) {
+      alert("Please fill in all fields.");
+      return;
+    }
+
+    // Step 1️⃣ - Sign up user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name, role: "staff" } },
+    });
+
+    if (authError) {
+      console.error(authError);
+      alert(authError.message);
+      return;
+    }
+
+    const authId = authData.user?.id;
+
+    // Step 2️⃣ - Upsert user into public.users (ensures role is correct)
+    const { data: upsertedUser, error: upsertError } = await supabase
+      .from("users")
+      .upsert(
+        {
+          auth_id: authId,
+          full_name,
+          email,
+          role: "staff", // ✅ force correct role
+        },
+        { onConflict: "auth_id" }
+      )
+      .select()
+      .single();
+
+    if (upsertError) {
+      console.error(upsertError);
+      alert("Failed to save user in public.users");
+      return;
+    }
+
+    // Step 3️⃣ - Add to delivery_team table
+    const { error: teamError } = await supabase.from("staffs").insert({
+      store_id: branchId,
+      user_id: upsertedUser.auth_id,
+    });
+
+    if (teamError) {
+      console.error(teamError);
+      alert("Failed to create delivery team entry.");
+    } else {
+      alert("Delivery agent added successfully!");
+      setShowAddStaffDialog(false);
+      setNewStaff({ full_name: "", email: "", password: "", role: "staff" });
+      fetchStaffs();
+    }
+  };
+
   return (
     <div className="p-6">
       {/* Header Section */}
@@ -517,6 +625,130 @@ const StoreBranch = () => {
                 </Button>
                 <Button onClick={addItem}>Add Item</Button>
               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* manage staff */}
+          <Dialog open={staffDialogOpen} onOpenChange={setStaffDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>Manage Staff</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Manage Staffs</DialogTitle>
+              </DialogHeader>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Staffs</CardTitle>
+                  <Button onClick={() => setShowAddStaffDialog(true)}>
+                    + Add Staff
+                  </Button>
+                </CardHeader>
+
+                <CardContent>
+                  <Input
+                    placeholder="Search agents..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="max-w-sm mb-3"
+                  />
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Full Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Created At</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {staffs
+                        .filter(
+                          (a) =>
+                            a.users?.full_name
+                              ?.toLowerCase()
+                              .includes(search.toLowerCase()) ||
+                            a.users?.email
+                              ?.toLowerCase()
+                              .includes(search.toLowerCase())
+                        )
+                        .map((agent) => (
+                          <TableRow key={agent.id}>
+                            <TableCell>{agent.users?.full_name}</TableCell>
+                            <TableCell>{agent.users?.email}</TableCell>
+                            <TableCell>
+                              {new Date(agent.created_at).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {/* Add staff Dialog */}
+              <Dialog
+                open={showAddStaffDialog}
+                onOpenChange={setShowAddStaffDialog}
+              >
+                <DialogContent className="sm:max-w-[400px]">
+                  <DialogHeader>
+                    <DialogTitle>Add Delivery Agent</DialogTitle>
+                  </DialogHeader>
+
+                  <div className="space-y-3 py-2">
+                    <div>
+                      <Label>Full Name</Label>
+                      <Input
+                        value={newStaff.full_name}
+                        onChange={(e) =>
+                          setNewStaff({
+                            ...newStaff,
+                            full_name: e.target.value,
+                          })
+                        }
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    <div>
+                      <Label>Email</Label>
+                      <Input
+                        type="email"
+                        value={newStaff.email}
+                        onChange={(e) =>
+                          setNewStaff({ ...newStaff, email: e.target.value })
+                        }
+                        placeholder="agent@example.com"
+                      />
+                    </div>
+                    <div>
+                      <Label>Password</Label>
+                      <Input
+                        type="password"
+                        value={newStaff.password}
+                        onChange={(e) =>
+                          setNewStaff({
+                            ...newStaff,
+                            password: e.target.value,
+                          })
+                        }
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAddStaffDialog(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAddStaff}>Save</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </DialogContent>
           </Dialog>
 

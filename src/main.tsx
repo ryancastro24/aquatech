@@ -22,6 +22,9 @@ import AdsManagemet from "./DashboardPages/AdsManagemet";
 import StoreDetails, {
   loader as storeDetailsLoader,
 } from "./DashboardPages/StoreDetails";
+import StaffStore, {
+  loader as staffStoreLoader,
+} from "./DashboardPages/StaffStore";
 const router = createBrowserRouter([
   {
     path: "/",
@@ -106,6 +109,11 @@ const router = createBrowserRouter([
         path: "store/:storeId",
         element: <StoreDetails />,
         loader: storeDetailsLoader,
+      },
+      {
+        path: "staff_store",
+        element: <StaffStore />,
+        loader: staffStoreLoader,
       },
     ],
   },

@@ -55,7 +55,7 @@ const Dashboard = () => {
     {
       path: "/dashboard/dashboard_main",
       label: "Dashboard",
-      roles: ["customer", "delivery", "business_owner", "admin"],
+      roles: ["customer", "delivery", "business_owner", "admin", "staff"],
     },
     {
       path: "/dashboard/stores",
@@ -93,6 +93,12 @@ const Dashboard = () => {
       path: "/dashboard/ads_management",
       label: "Ads Management",
       roles: ["admin"],
+    },
+
+    {
+      path: "/dashboard/staff_store",
+      label: "Staff Store",
+      roles: ["staff"],
     },
   ];
 
