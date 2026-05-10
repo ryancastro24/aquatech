@@ -40,6 +40,49 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 // 🧩 Types
+
+export function calculateDeliveryFee(distanceKm: any) {
+  const ratePerKm = 25;
+
+  if (!distanceKm || distanceKm < 0) return 0;
+
+  // always round UP distance first
+  const roundedDistance = Math.ceil(distanceKm * 100) / 100;
+
+  const fee = roundedDistance * ratePerKm;
+
+  return Number(fee.toFixed(2));
+}
+
+export function calculateDistanceKm(
+  userLat: any,
+  userLng: any,
+  storeLat: any,
+  storeLng: any,
+) {
+  const EARTH_RADIUS_KM = 6371;
+
+  const dLat = toRadians(storeLat - userLat);
+  const dLng = toRadians(storeLng - userLng);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(userLat)) *
+      Math.cos(toRadians(storeLat)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  const distance = EARTH_RADIUS_KM * c;
+
+  return Number(distance.toFixed(2));
+}
+
+function toRadians(degrees: any) {
+  return degrees * (Math.PI / 180);
+}
+
 interface InventoryItem {
   id: string;
   store_id: string;
@@ -77,20 +120,24 @@ const StoreDetails: React.FC = () => {
   const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
   const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
   const [storeDetails, setStoreDetails] = useState<any>(null);
-  // ✅ Get authenticated user
+  const [deliveryFee, setDeliveryFee] = useState<number | null>(0);
+  const [deliveryLoadingEffect, setDeliveryLoadingEffect] = useState(true);
+  // ✅ Get user's delivery location automatically
   useEffect(() => {
-    const getUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error("Error getting user:", error);
-      } else if (data?.user) {
-        setUserId(data.user.id);
-      }
-    };
-    getUser();
+    if (!navigator.geolocation) {
+      console.warn("Geolocation not supported");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setDeliveryLat(pos.coords.latitude);
+        setDeliveryLng(pos.coords.longitude);
+      },
+      (err) => console.error("Error getting location:", err),
+      { enableHighAccuracy: true },
+    );
   }, []);
 
-  // ✅ Fetch store inventory
   useEffect(() => {
     const fetchInventory = async () => {
       setLoading(true);
@@ -120,6 +167,41 @@ const StoreDetails: React.FC = () => {
     fetchStoreDetails();
   }, [storeId]);
 
+  useEffect(() => {
+    if (
+      deliveryLat == null ||
+      deliveryLng == null ||
+      !storeDetails?.latitude ||
+      !storeDetails?.longitude
+    ) {
+      return;
+    }
+
+    const distance = calculateDistanceKm(
+      deliveryLat,
+      deliveryLng,
+      storeDetails.latitude,
+      storeDetails.longitude,
+    );
+
+    setDeliveryFee(calculateDeliveryFee(distance));
+    setDeliveryLoadingEffect(false);
+  }, [deliveryLat, deliveryLng, storeDetails]);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Error getting user:", error);
+      } else if (data?.user) {
+        setUserId(data.user.id);
+      }
+    };
+    getUser();
+  }, []);
+
+  // ✅ Fetch store inventory
+
   // ✅ Select/deselect items
   const toggleSelectItem = (item: InventoryItem) => {
     setSelectedItems((prev) => {
@@ -133,33 +215,19 @@ const StoreDetails: React.FC = () => {
   const updateQuantity = (id: string, quantity: number | string) => {
     setSelectedItems((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, quantity: Number(quantity) } : item
-      )
+        item.id === id ? { ...item, quantity: Number(quantity) } : item,
+      ),
     );
   };
 
   // ✅ Compute total
-  const totalAmount = selectedItems.reduce((sum, item) => {
+  const itemsTotal = selectedItems.reduce((sum, item) => {
     const price = item.price || 0;
     const qty = item.quantity || 0;
     return sum + price * qty;
   }, 0);
 
-  // ✅ Get user's delivery location automatically
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      console.warn("Geolocation not supported");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setDeliveryLat(pos.coords.latitude);
-        setDeliveryLng(pos.coords.longitude);
-      },
-      (err) => console.error("Error getting location:", err),
-      { enableHighAccuracy: true }
-    );
-  }, []);
+  const totalAmount = itemsTotal + (deliveryFee ?? 0);
 
   // ✅ Submit order
   const handleSubmitOrder = async () => {
@@ -188,7 +256,7 @@ const StoreDetails: React.FC = () => {
               enableHighAccuracy: true,
               timeout: 10000,
               maximumAge: 0,
-            })
+            }),
         );
         lat = position.coords.latitude;
         lng = position.coords.longitude;
@@ -197,7 +265,7 @@ const StoreDetails: React.FC = () => {
       } catch (error) {
         console.error("❌ Error fetching geolocation:", error);
         alert(
-          "Unable to get your current location. Please enable location services."
+          "Unable to get your current location. Please enable location services.",
         );
         return;
       }
@@ -361,71 +429,95 @@ const StoreDetails: React.FC = () => {
             <DialogTitle>🧾 Review Your Order</DialogTitle>
           </DialogHeader>
 
-          {selectedItems.length === 0 ? (
-            <p className="text-gray-600 p-4 text-center">No items selected.</p>
+          {deliveryFee == null ? (
+            <>
+              <h2>Details is loading...</h2>{" "}
+            </>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Qty</TableHead>
-                    <TableHead>Subtotal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.item_name}</TableCell>
-                      <TableCell>₱{item.price.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={item.stock}
-                          value={item.quantity}
-                          onChange={(e) =>
-                            updateQuantity(item.id, e.target.value)
-                          }
-                          className="w-20"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        ₱{(item.price * item.quantity).toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              {selectedItems.length === 0 ? (
+                <p className="text-gray-600 p-4 text-center">
+                  No items selected.
+                </p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Qty</TableHead>
+                        <TableHead>Subtotal</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.item_name}</TableCell>
+                          <TableCell>₱{item.price.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={item.stock}
+                              value={item.quantity}
+                              onChange={(e) =>
+                                updateQuantity(item.id, e.target.value)
+                              }
+                              className="w-20"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            ₱{(item.price * item.quantity).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
 
-              <div className="flex flex-col gap-4 mt-4">
-                <div className="text-right font-semibold text-lg">
-                  Total: ₱{totalAmount.toFixed(2)}
-                </div>
+                  <div className="flex flex-col gap-4 mt-4">
+                    <div className="text-right font-semibold text-lg">
+                      <h2 className="text-sm">
+                        {deliveryLoadingEffect
+                          ? "Caculating delivery fee..."
+                          : ` Delivery fee: ₱${deliveryFee}`}
+                      </h2>
+                      <h2 className="text-sm">
+                        Items total: ₱{itemsTotal.toFixed(2)}
+                      </h2>
+                      <h2 className="items-sm">
+                        {deliveryLoadingEffect
+                          ? "Caculating grand total..."
+                          : `Grand total: ₱${totalAmount.toFixed(2)}`}
+                      </h2>
+                    </div>
 
-                <Input
-                  placeholder="Enter Contact Number"
-                  value={userContactNumber}
-                  onChange={(e) => setUserContactNumber(e.target.value)}
-                />
+                    <Input
+                      placeholder="Enter Contact Number"
+                      value={userContactNumber}
+                      onChange={(e) => setUserContactNumber(e.target.value)}
+                    />
 
-                <Input
-                  placeholder="Enter your delivery address..."
-                  value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
-                />
+                    <Input
+                      placeholder="Enter your delivery address..."
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                    />
 
-                <DialogFooter>
-                  <Button
-                    className="w-full"
-                    onClick={handleSubmitOrder}
-                    disabled={selectedItems.length === 0}
-                  >
-                    Submit Order
-                  </Button>
-                </DialogFooter>
-              </div>
+                    <DialogFooter>
+                      <Button
+                        className="w-full"
+                        onClick={handleSubmitOrder}
+                        disabled={
+                          selectedItems.length === 0 || deliveryLoadingEffect
+                        }
+                      >
+                        Submit Order
+                      </Button>
+                    </DialogFooter>
+                  </div>
+                </>
+              )}
             </>
           )}
         </DialogContent>

@@ -57,10 +57,52 @@ interface SelectedItem extends InventoryItem {
   quantity: number;
 }
 
+export function calculateDeliveryFee(distanceKm: any) {
+  const ratePerKm = 25;
+
+  if (!distanceKm || distanceKm < 0) return 0;
+
+  // always round UP distance first
+  const roundedDistance = Math.ceil(distanceKm * 100) / 100;
+
+  const fee = roundedDistance * ratePerKm;
+
+  return Number(fee.toFixed(2));
+}
+
+export function calculateDistanceKm(
+  userLat: any,
+  userLng: any,
+  storeLat: any,
+  storeLng: any,
+) {
+  const EARTH_RADIUS_KM = 6371;
+
+  const dLat = toRadians(storeLat - userLat);
+  const dLng = toRadians(storeLng - userLng);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(userLat)) *
+      Math.cos(toRadians(storeLat)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  const distance = EARTH_RADIUS_KM * c;
+
+  return Number(distance.toFixed(2));
+}
+
+function toRadians(degrees: any) {
+  return degrees * (Math.PI / 180);
+}
+
 const Stores = () => {
   const [branches, setBranches] = useState<StoreBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<StoreBranch | null>(
-    null
+    null,
   );
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
@@ -78,6 +120,8 @@ const Stores = () => {
   const [branchDistances, setBranchDistances] = useState<
     Record<number, number>
   >({});
+  const [deliveryFee, setDeliveryFee] = useState<number | null>(0);
+  const [deliveryLoadingEffect, setDeliveryLoadingEffect] = useState(true);
   const [searchTerm, setSearchTerm] = useState(""); // 🔍 Added for search
 
   // ✅ Get authenticated user
@@ -100,7 +144,7 @@ const Stores = () => {
           `
       *,
       stores ( name )
-    `
+    `,
         )
         .eq("is_closed", false); // ✅ only get open branches
 
@@ -121,7 +165,7 @@ const Stores = () => {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number => {
     const R = 6371; // km
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -173,9 +217,47 @@ const Stores = () => {
         alert("⚠️ Could not get your location. Please enable location access.");
         setGettingLocation(false);
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true },
     );
-  }, [branches.length]);
+  }, [branches.length, selectedBranch]);
+
+  useEffect(() => {
+    if (
+      deliveryLat == null ||
+      deliveryLng == null ||
+      selectedBranch?.latitude == null ||
+      selectedBranch?.longitude == null
+    ) {
+      return;
+    }
+
+    const userLat = Number(deliveryLat);
+    const userLng = Number(deliveryLng);
+    const storeLat = Number(selectedBranch.latitude);
+    const storeLng = Number(selectedBranch.longitude);
+
+    if (
+      isNaN(userLat) ||
+      isNaN(userLng) ||
+      isNaN(storeLat) ||
+      isNaN(storeLng)
+    ) {
+      console.warn("Invalid coordinates detected", {
+        userLat,
+        userLng,
+        storeLat,
+        storeLng,
+      });
+      return;
+    }
+
+    const distance = calculateDistanceKm(userLat, userLng, storeLat, storeLng);
+
+    const fee = calculateDeliveryFee(distance);
+
+    setDeliveryFee(fee);
+    setDeliveryLoadingEffect(false);
+  }, [deliveryLat, deliveryLng, selectedBranch?.id]);
 
   // ✅ Fetch inventory when a store is opened
   const fetchInventory = async (branchId: number) => {
@@ -201,16 +283,18 @@ const Stores = () => {
   // ✅ Update quantity
   const updateQuantity = (id: string, quantity: number) => {
     setSelectedItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity } : item))
+      prev.map((item) => (item.id === id ? { ...item, quantity } : item)),
     );
   };
 
   // ✅ Total amount
-  const totalAmount = selectedItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const itemsTotal = selectedItems.reduce((sum, item) => {
+    const price = item.price || 0;
+    const qty = item.quantity || 0;
+    return sum + price * qty;
+  }, 0);
 
+  const totalAmount = itemsTotal + (deliveryFee ?? 0);
   // ✅ Submit order
   const handleSubmitOrder = async () => {
     if (!userId) {
@@ -300,15 +384,15 @@ const Stores = () => {
 
   // ✅ Filter & group stores
   const filteredBranches = branches.filter((b) =>
-    b.stores.name.toLowerCase().includes(searchTerm.toLowerCase())
+    b.stores.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const nearbyStores = filteredBranches.filter(
-    (b) => branchDistances[b.id] && branchDistances[b.id] <= 10
+    (b) => branchDistances[b.id] && branchDistances[b.id] <= 10,
   );
 
   const otherStores = filteredBranches.filter(
-    (b) => !branchDistances[b.id] || branchDistances[b.id] > 10
+    (b) => !branchDistances[b.id] || branchDistances[b.id] > 10,
   );
 
   // ✅ Main content after location fetched
@@ -535,7 +619,7 @@ const Stores = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mt-4">
                       {inventoryItems.map((item) => {
                         const selected = selectedItems.some(
-                          (i) => i.id === item.id
+                          (i) => i.id === item.id,
                         );
                         return (
                           <Card
@@ -620,7 +704,7 @@ const Stores = () => {
                                       onChange={(e) =>
                                         updateQuantity(
                                           item.id,
-                                          Number(e.target.value)
+                                          Number(e.target.value),
                                         )
                                       }
                                       className="w-16 sm:w-20 text-sm"
@@ -642,7 +726,19 @@ const Stores = () => {
                   {selectedItems.length > 0 && (
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-5 pt-4 border-t flex-shrink-0 bg-white">
                       <div className="text-right sm:text-left font-semibold text-base sm:text-lg">
-                        Total: ₱{totalAmount.toFixed(2)}
+                        <h2 className="text-sm">
+                          {deliveryLoadingEffect
+                            ? "Calculating delivery fee..."
+                            : `Delivery Fee: ₱${deliveryFee}`}
+                        </h2>
+                        <h2 className="text-sm">
+                          Total: ₱{itemsTotal.toFixed(2)}
+                        </h2>
+                        <h2>
+                          {deliveryLoadingEffect
+                            ? "Calculating grand total..."
+                            : `Grand total: ₱${totalAmount.toFixed(2)}`}
+                        </h2>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                         <Input

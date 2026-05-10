@@ -5,12 +5,14 @@ import aquatec_bg from "@/assets/aquatech_bg2.jpg";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { FaUserTie } from "react-icons/fa6";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from "../components/ui/dialog";
 import { FcGoogle } from "react-icons/fc";
 import { Eye, EyeOff } from "lucide-react"; // ✅ Import icons
@@ -46,7 +48,7 @@ async function syncUserProfile() {
         profile_picture: user.user_metadata?.avatar_url || null,
         role: "customer",
       },
-      { onConflict: "auth_id" }
+      { onConflict: "auth_id" },
     )
     .select("id")
     .single();
@@ -362,6 +364,214 @@ const LoginPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <div className="absolute bottom-5 right-5">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="p-2 px-3 rounded-full bg-white text-blue-600 hover:bg-gray-100 font-[Poppins] text-xs cursor-pointer shadow-sm">
+              Are you a business owner?
+            </Button>
+          </DialogTrigger>
+
+          <DialogContent className="w-[95vw] max-w-[850px] max-h-[90vh] overflow-y-auto rounded-2xl font-[Poppins]">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold text-center text-blue-600">
+                Partner With Us
+              </DialogTitle>
+
+              <p className="text-sm text-gray-500 text-center mt-1">
+                Apply as a verified business partner in just a few simple steps.
+              </p>
+            </DialogHeader>
+
+            {/* Main Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+              {/* LEFT COLUMN */}
+              <div className="space-y-5">
+                {/* Contact Information */}
+                <div className="rounded-2xl border bg-gray-50 p-4 space-y-3">
+                  <h3 className="font-semibold text-sm text-blue-600">
+                    Contact Information
+                  </h3>
+
+                  <div className="space-y-2 text-sm text-gray-700">
+                    <div className="flex items-center gap-2">
+                      <span>📱</span>
+
+                      <a
+                        href="tel:+639123456789"
+                        className="hover:text-blue-600 transition"
+                      >
+                        +63 912 345 6789
+                      </a>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span>☎️</span>
+
+                      <a
+                        href="tel:+63821234567"
+                        className="hover:text-blue-600 transition"
+                      >
+                        (082) 123-4567
+                      </a>
+                    </div>
+
+                    <div className="flex items-center gap-2 break-all">
+                      <span>📧</span>
+
+                      <a
+                        href="mailto:partnership@example.com"
+                        className="hover:text-blue-600 transition"
+                      >
+                        aquatech@gmail.com
+                      </a>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-500 pt-2">
+                    Estimated review time: 1–3 business days
+                  </p>
+                </div>
+
+                {/* Required Documents */}
+                <div className="rounded-2xl border p-4">
+                  <h3 className="font-semibold text-sm text-blue-600 mb-2">
+                    Required Documents
+                  </h3>
+
+                  <ul className="list-disc ml-5 text-sm text-gray-600 space-y-1">
+                    <li>Business Permit</li>
+                    <li>Valid Government ID</li>
+                    <li>Business Logo or Banner</li>
+                    <li>Business Contact Information</li>
+                  </ul>
+                </div>
+
+                {/* Important Notice */}
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                  <h3 className="font-semibold text-sm text-blue-700 mb-2">
+                    Important Notice
+                  </h3>
+
+                  <p className="text-sm text-blue-700 leading-relaxed">
+                    Business owner accounts are manually created by the
+                    administrator after successful verification and approval of
+                    the application.
+                  </p>
+                </div>
+
+                {/* Footer Note */}
+                <div className="rounded-xl bg-blue-50 p-3">
+                  <p className="text-xs text-blue-700 text-center">
+                    Only verified and legitimate businesses will be approved to
+                    join the platform.
+                  </p>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN */}
+              <div className="space-y-4">
+                {/* Step 1 */}
+                <div className="flex gap-4 rounded-2xl border p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shrink-0">
+                    📞
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-sm">
+                      Step 1 — Contact the Admin
+                    </h3>
+
+                    <p className="text-sm text-gray-600 mt-1">
+                      Call or email the administrator for initial business
+                      validation and partnership inquiry.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex gap-4 rounded-2xl border p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shrink-0">
+                    📄
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-sm">
+                      Step 2 — Submit Requirements
+                    </h3>
+
+                    <p className="text-sm text-gray-600 mt-1">
+                      Send all required business documents through email for
+                      review and verification.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex gap-4 rounded-2xl border p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shrink-0">
+                    🔍
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-sm">
+                      Step 3 — Verification & Review
+                    </h3>
+
+                    <p className="text-sm text-gray-600 mt-1">
+                      The administrator will evaluate the submitted documents
+                      and validate your business information.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="flex gap-4 rounded-2xl border p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shrink-0">
+                    ✅
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-sm">
+                      Step 4 — Account Creation & Approval
+                    </h3>
+
+                    <p className="text-sm text-gray-600 mt-1">
+                      Once approved, the administrator will create your business
+                      owner account and contact you regarding your login
+                      credentials.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 5 */}
+                <div className="flex gap-4 rounded-2xl border p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shrink-0">
+                    🚀
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-sm">
+                      Step 5 — Business Activation
+                    </h3>
+
+                    <p className="text-sm text-gray-600 mt-1">
+                      Approved businesses will be activated and officially
+                      listed on the platform.
+                    </p>
+                  </div>
+                </div>
+
+                {/* CTA */}
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl h-11">
+                  Contact Admin
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 };
