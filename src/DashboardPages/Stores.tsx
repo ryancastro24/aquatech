@@ -58,7 +58,7 @@ interface SelectedItem extends InventoryItem {
 }
 
 export function calculateDeliveryFee(distanceKm: any) {
-  const ratePerKm = 25;
+  const ratePerKm = 4;
 
   if (!distanceKm || distanceKm < 0) return 0;
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "../components/ui/card";
 import logo from "@/assets/aquatech_logo.png";
-import aquatec_bg from "@/assets/aquatech_bg2.jpg";
+import aquatec_bg from "@/assets/aquatech_bg.jpg";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
